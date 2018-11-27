@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Reward</title>
+</head>
+<body>
+<table>
+    <tr>
+        <th>Address</th>
+        <th>Points</th>
+        <th>Attested</th>
+        <th>Referer</th>
+    </tr>
+    <% for(var k in objAddresses) {%>
+    <tr>
+        <td><a href="https://explorer.byteball.org/#<%= k %>"><%= k %></a></td>
+        <td><%= objAddresses[k].points %></td>
+        <td><%= objAddresses[k].attested %></td>
+        <td><%= objAddresses[k].regRefId %></td>
+    </tr>
+    <% } %>
+</table>
+<br>
+Total sum: <%= sum %>
+</body>
+</html>
