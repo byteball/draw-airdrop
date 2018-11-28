@@ -39,10 +39,9 @@ exports.rewardForReferrerInBytes = 5;
 exports.rewardForWinnerInBlackBytes = 50;
 exports.rewardForReffererInBlackBytes = 50;
 
-exports.amountForNextCalc = 10;
-
 exports.payoutCheckInterval = 60000 * 10;
 
+exports.balanceThreshold = 10;
 exports.multiplierMoreAmountNextCalc = 0.1;
 exports.multiplierNonAttested = 0.1;
 exports.multiplierForIncreasingBalance = 0.1;

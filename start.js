@@ -127,10 +127,10 @@ async function sendGo(device_address) {
 		let attested = assocAddressesToAttested[address];
 		let objPoints = await calcPoints(await getAddressBalance(address), address);
 		text += address + '\n(' + (attested ? 'attested' : 'non-attested') + '), points: ' + objPoints.total + '\n' +
-			(objPoints.greatNextCalc.toNumber() > 0 ?
-				objPoints.greatNextCalc.toString() + ' points for sum more ' + conf.amountForNextCalc + ' gb\n' : '') +
-			(objPoints.lessNextCalc.toNumber() > 0 ?
-				objPoints.lessNextCalc.toString() + ' points for sum less ' + conf.amountForNextCalc + ' gb\n' : '') +
+			(objPoints.pointsForBalanceAboveThreshold.toNumber() > 0 ?
+				objPoints.pointsForBalanceAboveThreshold.toString() + ' points for sum more ' + conf.balanceThreshold + ' gb\n' : '') +
+			(objPoints.pointsForBalanceBelowThreshold.toNumber() > 0 ?
+				objPoints.pointsForBalanceBelowThreshold.toString() + ' points for sum less ' + conf.balanceThreshold + ' gb\n' : '') +
 			(objPoints.change.toNumber() ?
 				objPoints.change.toString() + ' points for the changes from the last draw' : '') +
 			'';
@@ -404,23 +404,22 @@ function updateNextRewardInConf() {
 
 async function calcPoints(balance, address) {
 	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ? AND signed = 1", [address]);
-	if (!rows.length) return {total: 0, greatNextCalc: 0, lessNextCalc: 0, change: 0};
+	if (!rows.length) return {total: 0, pointsForBalanceAboveThreshold: 0, pointsForBalanceBelowThreshold: 0, change: 0};
 	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? ORDER BY date DESC LIMIT 0,1", [address]);
 	
-	let amountForNextCalc = conf.amountForNextCalc * conf.unitValue;
-	let greatNextCalc = new BigNumber(0);
-	let lessNextCalc = new BigNumber(0);
+	let amountForNextCalc = conf.balanceThreshold * conf.unitValue;
+	let pointsForBalanceAboveThreshold = new BigNumber(0);
+	let pointsForBalanceBelowThreshold = new BigNumber(0);
 	let change = new BigNumber(0);
 	if (rows[0].attested) {
 		if (balance > amountForNextCalc) {
 			balance = new BigNumber(amountForNextCalc).add(new BigNumber(balance - amountForNextCalc).times(conf.multiplierMoreAmountNextCalc));
-			greatNextCalc = new BigNumber(balance - amountForNextCalc).times(conf.multiplierMoreAmountNextCalc).div(conf.unitValue);
-			lessNextCalc = new BigNumber(amountForNextCalc).div(conf.unitValue);
+			pointsForBalanceAboveThreshold = new BigNumber(balance - amountForNextCalc).times(conf.multiplierMoreAmountNextCalc).div(conf.unitValue);
+			pointsForBalanceBelowThreshold = new BigNumber(amountForNextCalc).div(conf.unitValue);
 		} else {
-			lessNextCalc = new BigNumber(balance).div(conf.unitValue);
+			pointsForBalanceBelowThreshold = new BigNumber(balance).div(conf.unitValue);
 		}
 	} else {
-		lessNextCalc = new BigNumber(balance).times(conf.multiplierNonAttested).div(conf.unitValue);
 		balance = new BigNumber(balance).times(conf.multiplierNonAttested);
 	}
 	let total = new BigNumber(balance).div(conf.unitValue);
@@ -430,12 +429,12 @@ async function calcPoints(balance, address) {
 			total = total.add(_change);
 			change = _change;
 		} else if (balance < rows2[0].balance) {
-			let _change = ((new BigNumber(balance).minus(rows2[0].balance)).abs()).times(conf.multiplierForDecreaseBalance).div(conf.unitValue);
-			total = total.minus(_change);
-			change = _change.times(-1);
+			let _change = (new BigNumber(balance).minus(rows2[0].balance)).times(conf.multiplierForDecreaseBalance).div(conf.unitValue);
+			total = total.add(_change);
+			change = _change;
 		}
 	}
-	return {total: total, greatNextCalc, lessNextCalc, change};
+	return {total: total, pointsForBalanceAboveThreshold, pointsForBalanceBelowThreshold, change};
 }
 
 async function getReferrerFromAddress(address) {
