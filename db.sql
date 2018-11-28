@@ -12,7 +12,6 @@ CREATE TABLE user_addresses (
     address CHAR(32) NOT NULL UNIQUE,
     signed TINYINT NOT NULL DEFAULT 0,
     attested TINYINT NOT NULL DEFAULT 0,
-    prevBalance INT NOT NULL DEFAULT 0,
     date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(device_address, address),
     FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
@@ -35,4 +34,13 @@ CREATE TABLE draws (
     PRIMARY KEY(bitcoin_hash),
     FOREIGN KEY (winner_address) REFERENCES user_addresses(address),
     FOREIGN KEY (referrer_address) REFERENCES user_addresses(address)
+);
+
+CREATE TABLE prev_balances (
+    bitcoin_hash CHAR(64) NOT NULL,
+    address CHAR(32) NOT NULL,
+    balance INT NOT NULL,
+    date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(bitcoin_hash, address),
+    FOREIGN KEY (address) REFERENCES user_addresses(address)
 );
