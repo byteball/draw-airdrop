@@ -13,10 +13,10 @@ CREATE TABLE user_addresses (
     signed TINYINT NOT NULL DEFAULT 0,
     attested TINYINT NOT NULL DEFAULT 0,
     date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(device_address, address),
+    PRIMARY KEY(address),
     FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
-CREATE INDEX byUserAddresses ON user_addresses(address);
+CREATE INDEX byDeviceAddresses ON user_addresses(device_address);
 
 CREATE TABLE draws (
     bitcoin_hash CHAR(64) NOT NULL,

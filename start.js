@@ -395,7 +395,7 @@ function updateNextRewardInConf() {
 		json = {};
 	}
 	
-	conf.nextDate = moment(conf.drawDate, 'DD.MM.YYYY hh:mm').add(conf.intervalDrawings, 'days');
+	conf.nextDate = moment(conf.drawDate, 'DD.MM.YYYY hh:mm').add(conf.drawInterval, 'days');
 	json.nextDate = conf.nextDate;
 	fs.writeFile(userConfFile, JSON.stringify(json, null, '\t'), 'utf8', (err) => {
 		if (err)
