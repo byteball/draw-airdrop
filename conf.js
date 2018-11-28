@@ -32,7 +32,7 @@ exports.unitValue = 1000000000;
 exports.oracle = 'FOPUBEUPBC6YLIQDLKL6EW775BMV7YOH';
 
 exports.drawDate = '19.11.2018 13:38';
-exports.intervalDrawings = 7; // days
+exports.drawInterval = 7; // days
 
 exports.rewardForWinnerInBytes = 10;
 exports.rewardForReferrerInBytes = 5;
