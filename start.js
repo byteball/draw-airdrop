@@ -12,6 +12,7 @@ const moment = require('moment');
 const desktopApp = require('byteballcore/desktop_app.js');
 const async = require('async');
 const fs = require('fs');
+const mutex = require('byteballcore/mutex');
 
 BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
@@ -42,12 +43,12 @@ eventBus.once('headless_wallet_ready', () => {
 		let addressesRows = await getAddresses(from_address);
 		let arrSignedMessageMatches = text.match(/\(signed-message:(.+?)\)/);
 		
-		if (validationUtils.isValidAddress(text.toUpperCase())) {
-			let exists = await existsAddress(text.toUpperCase());
+		if (validationUtils.isValidAddress(text)) {
+			let exists = await existsAddress(text);
 			if (exists) {
 				device.sendMessageToDevice(from_address, 'text', 'Address already in use');
 			} else {
-				await saveAddress(from_address, text.toUpperCase());
+				await saveAddress(from_address, text);
 				await setStep(from_address, 'sign');
 				return device.sendMessageToDevice(from_address, 'text', 'I save your address. \n' + textSign());
 			}
@@ -58,9 +59,9 @@ eventBus.once('headless_wallet_ready', () => {
 			await setStep(from_address, 'go');
 			await sendGo(from_address, userInfo);
 		} else if (text === 'ref') {
-			device.sendMessageToDevice(from_address, 'text', 'Для привлечения рефералов используйте ваш id: ' + userInfo.myRefId +
+			device.sendMessageToDevice(from_address, 'text', 'To attract referrals, use your id: ' + userInfo.refId +
 				'\nили pairing code:');
-			return device.sendMessageToDevice(from_address, 'text', device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.myRefId);
+			return device.sendMessageToDevice(from_address, 'text', device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.refId);
 		} else if (userInfo.step === 'ref') {
 			let user = await getUserByCode(text);
 			if (user) {
@@ -90,7 +91,7 @@ eventBus.once('headless_wallet_ready', () => {
 					return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " +
 						objSignedMessage.authors[0].address);
 				await saveSigned(from_address, objSignedMessage.authors[0].address);
-				if (userInfo.regRefId) {
+				if (userInfo.invitedRefId) {
 					await setStep(from_address, 'go');
 					await sendGo(from_address, userInfo);
 				} else {
@@ -136,7 +137,7 @@ function textSign() {
 
 function getUserInfo(device_address) {
 	return new Promise(resolve => {
-		db.query("SELECT myRefId, regRefId, step FROM users WHERE device_address = ?", [device_address], rows => {
+		db.query("SELECT refId, invitedRefId, step FROM users WHERE device_address = ?", [device_address], rows => {
 			if (rows) {
 				return resolve(rows[0]);
 			} else {
@@ -147,34 +148,37 @@ function getUserInfo(device_address) {
 }
 
 async function getAddresses(device_address) {
-	return await db.query("SELECT * FROM users_addresses WHERE device_address = ? ", [device_address]);
+	return await db.query("SELECT * FROM user_addresses WHERE device_address = ? ", [device_address]);
 }
 
 async function itsAddress(device_address, address) {
-	let rows = await db.query("SELECT * FROM users_addresses WHERE device_address = ? AND address = ?", [device_address, address]);
+	let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND address = ?", [device_address, address]);
 	return !!rows.length;
 }
 
 async function saveAddress(device_address, user_address) {
 	let rows = await db.query("SELECT device_address FROM users WHERE device_address = ?", [device_address]);
 	if (!rows.length) {
-		let myRefId = crypto.createHash('sha1').update(Date.now() + device_address + user_address).digest('hex');
-		await db.query("INSERT INTO users (device_address, myRefId) values (?,?)", [device_address, myRefId]);
-		await db.query("INSERT INTO users_addresses (device_address, address) values (?,?)", [device_address, user_address]);
+		let refId = makeid();
+		while ((await db.query("SELECT refId FROM users WHERE refId = ?", [refId])).length) {
+			refId = makeid();
+		}
+		await db.query("INSERT INTO users (device_address, refId) values (?,?)", [device_address, refId]);
+		await db.query("INSERT INTO user_addresses (device_address, address) values (?,?)", [device_address, user_address]);
 	} else {
-		await db.query("INSERT " + db.getIgnore() + " INTO users_addresses (device_address, address) values (?,?)",
+		await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address) values (?,?)",
 			[device_address, user_address]);
 	}
 }
 
 async function saveSigned(device_address, address) {
-	await db.query("UPDATE users_addresses SET signed = 1 WHERE device_address = ? AND address = ?", [device_address, address]);
+	await db.query("UPDATE user_addresses SET signed = 1 WHERE device_address = ? AND address = ?", [device_address, address]);
 	return true;
 }
 
 function getUserByCode(code) {
 	return new Promise(resolve => {
-		db.query("SELECT * FROM users WHERE myRefId = ?", [code], rows => {
+		db.query("SELECT * FROM users WHERE refId = ?", [code], rows => {
 			if (rows.length) {
 				return resolve(rows[0]);
 			} else {
@@ -186,7 +190,7 @@ function getUserByCode(code) {
 
 function setRefRegId(device_address, code) {
 	return new Promise(resolve => {
-		db.query("UPDATE users SET regRefId = ? WHERE device_address = ?", [code, device_address], () => {
+		db.query("UPDATE users SET invitedRefId = ? WHERE device_address = ?", [code, device_address], () => {
 			return resolve();
 		})
 	});
@@ -207,18 +211,18 @@ async function getAddressBalance(address) {
 setInterval(async () => {
 	if (moment() > moment(conf.nextReward, 'DD.MM.YYYY hh:mm')) {
 		updateNextRewardInConf();
-		let assocPoints = {};
+		let arrPoints = [];
 		let sum = new BigNumber(0);
 		let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 				FROM outputs JOIN units USING(unit)\n\
-				WHERE is_spent=0 AND address IN(SELECT address FROM users_addresses WHERE signed = 1) AND sequence='good' AND asset IS NULL\n\
+				WHERE is_spent=0 AND address IN(SELECT address FROM user_addresses WHERE signed = 1) AND sequence='good' AND asset IS NULL\n\
 				GROUP BY address", []);
 		
 		for (let i = 0; i < rows1.length; i++) {
 			let row = rows1[i];
 			let points = (await calcPoints(row.balance, row.address)).total;
 			if (points.gt(0)) {
-				assocPoints[row.address] = points;
+				arrPoints[i] = {address: row.address, points};
 				sum = sum.add(points);
 			}
 		}
@@ -227,9 +231,9 @@ setInterval(async () => {
 			let arrQueries = [];
 			db.takeConnectionFromPool(function (conn) {
 				conn.addQuery(arrQueries, "BEGIN");
-				conn.addQuery(arrQueries, "UPDATE users_addresses SET balance = 0");
+				conn.addQuery(arrQueries, "UPDATE user_addresses SET balance = 0");
 				rows1.forEach(row => {
-					conn.addQuery(arrQueries, "UPDATE users_addresses SET balance = ? WHERE address = ?", [row.balance, row.address]);
+					conn.addQuery(arrQueries, "UPDATE user_addresses SET balance = ? WHERE address = ?", [row.balance, row.address]);
 				});
 				conn.addQuery(arrQueries, "COMMIT");
 				async.series(arrQueries, () => {
@@ -250,93 +254,114 @@ setInterval(async () => {
 		let random = (number.div(new BigNumber(2).pow(256))).times(sum);
 		
 		let sum2 = new BigNumber(0);
-		let winner;
-		for (let address in assocPoints) {
-			sum2 = sum2.add(assocPoints[address]);
+		let winner_address;
+		for (let i = 0; i < arrPoints.length; i++) {
+			sum2 = sum2.add(arrPoints[i].points);
 			if (random.lte(sum2)) {
-				winner = address;
+				winner_address = arrPoints[i].address;
 				break;
 			}
 		}
-		let refAddress = await getRefererFromAddress(winner);
+		let refAddress = await getRefererFromAddress(winner_address);
 		let winnerDeviceAddress = '';
 		let refDeviceAddress = '';
-		let rows2 = await db.query("SELECT device_address FROM users_addresses WHERE address = ?", [winner]);
+		let rows2 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [winner_address]);
 		winnerDeviceAddress = rows2[0].device_address;
 		if (!refAddress) {
 			refAddress = '-';
 		} else {
-			let rows3 = await db.query("SELECT device_address FROM users_addresses WHERE address = ?", [refAddress]);
+			let rows3 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [refAddress]);
 			refDeviceAddress = rows3[0].device_address;
 		}
-		await db.query("INSERT INTO lotteries (bitcoin_hash, hash, winner, refer) values (?,?,?,?)", [value, hash, winner, refAddress]);
+		await db.query("INSERT INTO draws (bitcoin_hash, hash, winner_address, referrer_address, sum) values (?,?,?,?,?)",
+			[value, hash, winner_address, refAddress, sum.toNumber()]);
 		pay(value);
-		await sendNotification(winnerDeviceAddress, refDeviceAddress, winner, refAddress);
+		await sendNotification(winnerDeviceAddress, refDeviceAddress, winner_address, refAddress);
 	}
 }, 60000);
 
-async function sendNotification(winnerDeviceAddress, refDeviceAddress, winner, refer) {
+async function sendNotification(winnerDeviceAddress, refDeviceAddress, winner_address, referrer_address) {
 	let device = require('byteballcore/device');
 	let rows = await db.query("SELECT device_address FROM users");
 	rows.forEach(row => {
-		device.sendMessageToDevice(row.device_address, 'text', 'Winner - ' + winner +
+		device.sendMessageToDevice(row.device_address, 'text', 'Winner - ' + winner_address +
 			(winnerDeviceAddress === row.device_address ? ' (you)' : '') + '\n' +
-			(refer !== '-' ? 'Refer: ' + refer + (refDeviceAddress === row.device_address ? ' (you)' : '') : '')
+			(referrer_address !== '-' ? 'referrer: ' + referrer_address + (refDeviceAddress === row.device_address ? ' (you)' : '') : '')
 		);
 	});
 }
 
 setInterval(async () => {
-	let rows = await db.query("SELECT bitcoin_hash FROM lotteries WHERE paid_bytes = 0 OR paid_winner_bb = 0 OR paid_refer_bb = 0");
+	let rows = await db.query("SELECT bitcoin_hash FROM draws WHERE paid_bytes = 0 OR paid_winner_bb = 0 OR paid_referrer_bb = 0");
 	rows.forEach(row => {
 		pay(row.bitcoin_hash);
 	})
 }, conf.rePaidInterval);
 
 function pay(bitcoin_hash) {
-	db.query("SELECT * FROM lotteries WHERE bitcoin_hash = ?", [bitcoin_hash], rows => {
-		if (rows.length) {
-			if (rows[0].paid_bytes === 0) {
-				payBytes(rows[0], (err, unit) => {
-					if (err) {
-						setTimeout(() => {
-							pay(bitcoin_hash);
-						}, conf.rePaidInterval);
-					} else {
-						db.query("UPDATE lotteries SET paid_bytes = 1, paid_bytes_unit = ? WHERE bitcoin_hash = ?", [unit, bitcoin_hash]);
-					}
-				});
+	mutex.lock(["pay_lock"], (unlock) => {
+		db.query("SELECT * FROM draws WHERE bitcoin_hash = ?", [bitcoin_hash], rows => {
+			if (rows.length) {
+				let i = 0;
+				if (rows[0].paid_bytes === 0) {
+					i++;
+					payBytes(rows[0], (err, unit) => {
+						i--;
+						if (err) {
+							setTimeout(() => {
+								pay(bitcoin_hash);
+							}, conf.rePaidInterval);
+							if (i === 0) unlock();
+						} else {
+							db.query("UPDATE draws SET paid_bytes = 1, paid_bytes_unit = ? WHERE bitcoin_hash = ?", [unit, bitcoin_hash], () => {
+								if (i === 0) unlock();
+							});
+						}
+					});
+				}
+				if (rows[0].paid_winner_bb === 0) {
+					i++;
+					payBBWinner(rows[0], (err, unit) => {
+						i--;
+						if (err) {
+							setTimeout(() => {
+								pay(bitcoin_hash);
+							}, conf.rePaidInterval);
+							if (i === 0) unlock();
+						} else {
+							db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_address_bb_unit = ? WHERE bitcoin_hash = ?",
+								[unit, bitcoin_hash], () => {
+									if (i === 0) unlock();
+								});
+						}
+					})
+				}
+				if (rows[0].paid_referrer_bb === 0) {
+					i++;
+					payBBReferrer(rows[0], (err, unit) => {
+						i--;
+						if (err) {
+							setTimeout(() => {
+								pay(bitcoin_hash);
+							}, conf.rePaidInterval);
+							if (i === 0) unlock();
+						} else {
+							db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE bitcoin_hash = ?",
+								[unit, bitcoin_hash], () => {
+									if (i === 0) unlock();
+								});
+						}
+					});
+				}
 			}
-			if (rows[0].paid_winner_bb === 0) {
-				payBBWinner(rows[0], (err, unit) => {
-					if (err) {
-						setTimeout(() => {
-							pay(bitcoin_hash);
-						}, conf.rePaidInterval);
-					} else {
-						db.query("UPDATE lotteries SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE bitcoin_hash = ?", [unit, bitcoin_hash]);
-					}
-				})
-			}
-			if (rows[0].paid_refer_bb === 0) {
-				payBBRefer(rows[0], (err, unit) => {
-					if (err) {
-						setTimeout(() => {
-							pay(bitcoin_hash);
-						}, conf.rePaidInterval);
-					} else {
-						db.query("UPDATE lotteries SET paid_refer_bb = 1, paid_refer_bb_unit = ? WHERE bitcoin_hash = ?", [unit, bitcoin_hash]);
-					}
-				});
-			}
-		}
+		});
 	});
 }
 
 function payBytes(row, cb) {
-	let outputs = [{address: row.winner, amount: conf.rewardB}];
-	if (row.refer !== '-') {
-		outputs.push({address: row.refer, amount: conf.refRewardB});
+	let outputs = [{address: row.winner_address, amount: conf.rewardForWinnerInBytes}];
+	if (row.referrer_address !== '-') {
+		outputs.push({address: row.referrer_address, amount: conf.rewardForReferrerInBytes});
 	}
 	headlessWallet.sendPaymentUsingOutputs('base', outputs, myAddress, (err, unit) => {
 		console.log('Pay Bytes - ', row.bitcoin_hash, ' - - ', err, unit);
@@ -346,8 +371,8 @@ function payBytes(row, cb) {
 
 function payBBWinner(row, cb) {
 	headlessWallet.sendPaymentUsingOutputs(constants.BLACKBYTES_ASSET, [{
-			address: row.winner,
-			amount: conf.rewardBB
+			address: row.winner_address,
+			amount: conf.rewardForWinnerInBlackBytes
 		}], myAddress,
 		(err, unit) => {
 			console.log('Pay BB Winner - ', row.bitcoin_hash, ' - - ', err, unit);
@@ -355,13 +380,13 @@ function payBBWinner(row, cb) {
 		});
 }
 
-function payBBRefer(row, cb) {
+function payBBReferrer(row, cb) {
 	headlessWallet.sendPaymentUsingOutputs(constants.BLACKBYTES_ASSET, [{
-			address: row.refer,
-			amount: conf.refRewardBB
+			address: row.referrer_address,
+			amount: conf.rewardForReffererInBlackBytes
 		}], myAddress,
 		(err, unit) => {
-			console.log('Pay BB Refer - ', row.bitcoin_hash, ' - - ', err, unit);
+			console.log('Pay BB referrer - ', row.bitcoin_hash, ' - - ', err, unit);
 			cb(err, unit);
 		});
 }
@@ -385,7 +410,7 @@ function updateNextRewardInConf() {
 }
 
 async function calcPoints(balance, address) {
-	let rows = await db.query("SELECT * FROM users_addresses WHERE address = ?", [address]);
+	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ?", [address]);
 	if (!rows.length) return {total: 0, greatNextCalc: 0, lessNextCalc: 0, change: 0};
 	
 	let amountForNextCalc = conf.amountForNextCalc * conf.unitValue;
@@ -394,23 +419,23 @@ async function calcPoints(balance, address) {
 	let change = new BigNumber(0);
 	if (rows[0].attested) {
 		if (balance > amountForNextCalc) {
-			balance = new BigNumber(amountForNextCalc).add(new BigNumber(balance - amountForNextCalc).div(10));
-			greatNextCalc = new BigNumber(balance - amountForNextCalc).div(10).div(conf.unitValue);
+			balance = new BigNumber(amountForNextCalc).add(new BigNumber(balance - amountForNextCalc).div(conf.divider));
+			greatNextCalc = new BigNumber(balance - amountForNextCalc).div(conf.divider).div(conf.unitValue);
 			lessNextCalc = new BigNumber(amountForNextCalc).div(conf.unitValue);
 		} else {
 			lessNextCalc = new BigNumber(balance).div(conf.unitValue);
 		}
 	} else {
-		lessNextCalc = new BigNumber(balance).div(10).div(conf.unitValue);
-		balance = new BigNumber(balance).div(10);
+		lessNextCalc = new BigNumber(balance).div(conf.divider).div(conf.unitValue);
+		balance = new BigNumber(balance).div(conf.divider);
 	}
 	let total = new BigNumber(balance).div(conf.unitValue);
 	if (balance > rows[0].balance) {
-		let _change = (new BigNumber(balance).minus(rows[0].balance)).div(10).div(conf.unitValue);
+		let _change = (new BigNumber(balance).minus(rows[0].balance)).div(conf.divider).div(conf.unitValue);
 		total = total.add(_change);
 		change = _change;
 	} else if (balance < rows[0].balance) {
-		let _change = ((new BigNumber(balance).minus(rows[0].balance)).abs()).div(10).div(conf.unitValue);
+		let _change = ((new BigNumber(balance).minus(rows[0].balance)).abs()).div(conf.divider).div(conf.unitValue);
 		total = total.minus(_change);
 		change = _change.times(-1);
 	}
@@ -418,13 +443,13 @@ async function calcPoints(balance, address) {
 }
 
 async function getRefererFromAddress(address) {
-	let rows = await db.query("SELECT regRefId, attested FROM users_addresses JOIN users USING(device_address) WHERE address = ?", [address]);
+	let rows = await db.query("SELECT invitedRefId, attested FROM user_addresses JOIN users USING(device_address) WHERE address = ?", [address]);
 	if (!rows.length || (rows.length && rows[0].attested === 0)) {
 		return null;
 	} else {
-		if (rows[0].regRefId === '' || rows[0].regRefId === '-') return null;
-		let rows2 = await db.query("SELECT address FROM users JOIN users_addresses USING(device_address) WHERE myRefId = ? AND attested = 1",
-			[rows[0].regRefId]);
+		if (rows[0].invitedRefId === '' || rows[0].invitedRefId === '-') return null;
+		let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE refId = ? AND attested = 1",
+			[rows[0].invitedRefId]);
 		return rows2[0].address;
 	}
 }
@@ -448,18 +473,23 @@ app.use(views(__dirname + '/views', {
 }));
 
 app.use(async ctx => {
+	let rows = await db.query("SELECT * FROM draws ORDER BY date DESC LIMIT 0,1");
 	let objAddresses = await getObjAddresses();
-	await ctx.render('index', objAddresses);
+	await ctx.render('index', Object.assign(objAddresses, {
+		winner_address: rows[0].winner_address,
+		referrer_address: rows[0].referrer_address,
+		sum: rows[0].sum
+	}));
 });
 
 async function getObjAddresses() {
 	let sum = new BigNumber(0);
-	let rows = await db.query("SELECT address, attested, regRefId FROM users_addresses JOIN users USING(device_address) WHERE signed = 1");
+	let rows = await db.query("SELECT address, attested, invitedRefId FROM user_addresses JOIN users USING(device_address) WHERE signed = 1");
 	let objAddresses = {};
 	let addresses = [];
 	rows.forEach(row => {
 		addresses.push(row.address);
-		objAddresses[row.address] = {attested: row.attested, points: "0", regRefId: row.regRefId};
+		objAddresses[row.address] = {attested: row.attested, points: "0", invitedRefId: row.invitedRefId};
 	});
 	
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
@@ -488,13 +518,23 @@ async function checkAttestationAddresses(addresses) {
 		_addresses.push(row.address);
 		assocAddressesToAttested[row.address] = true;
 	});
-	await db.query("UPDATE users_addresses SET attested = 1 WHERE address IN(?)", [_addresses]);
+	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [_addresses]);
 	return assocAddressesToAttested;
 }
 
 async function existsAddress(address) {
-	let rows = await db.query("SELECT * FROM users_addresses WHERE address = ?", [address]);
+	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ?", [address]);
 	return !!rows.length;
+}
+
+function makeid() {
+	let text = "";
+	let possible = "abcdefghijklmnopqrstuvwxyz0123456789";
+	
+	for (let i = 0; i < 10; i++)
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+	
+	return text;
 }
 
 app.listen(3000);
