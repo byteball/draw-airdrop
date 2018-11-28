@@ -5,11 +5,13 @@
     <title>Reward</title>
 </head>
 <body>
+<% if(!nonDraws) {%>
 <div>
     Last winner: <%= winner_address %><br>
     Last referrer: <%= referrer_address %><br>
-    Last sum: <%= sum %> points<br><br>
+    Last sum: <%= lastSum %> points<br><br>
 </div>
+<% } %>
 <table>
     <tr>
         <th>Address</th>
