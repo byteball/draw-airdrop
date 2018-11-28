@@ -18,7 +18,7 @@ exports.control_addresses = [''];
 exports.payout_address = 'WHERE THE MONEY CAN BE SENT TO';
 
 exports.bIgnoreUnpairRequests = true;
-exports.bSingleAddress = false;
+exports.bSingleAddress = true;
 exports.bStaticChangeAddress = true;
 exports.KEYS_FILENAME = 'keys.json';
 

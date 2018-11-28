@@ -272,15 +272,16 @@ setInterval(async () => {
 			let rows3 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [refAddress]);
 			refDeviceAddress = rows3[0].device_address;
 		}
-		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, hash, winner_address, referrer_address, sum) values (?,?,?,?,?)",
-			[value, hash, winner_address, refAddress, sum.toNumber()]);
+		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, winner_address, referrer_address, sum) values (?,?,?,?)",
+			[value, winner_address, refAddress, sum.toNumber()]);
+
 		await new Promise(resolve => {
 			let arrQueries = [];
 			db.takeConnectionFromPool(function (conn) {
 				conn.addQuery(arrQueries, "BEGIN");
 				rows1.forEach(row => {
-					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, bitcoin_hash, address, balance) values (?,?,?,?)",
-						[insertMeta.insertId, rows[0].value, row.address, assocAddressesToBalance[row.address]]);
+					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, address, balance) values (?,?,?)",
+						[insertMeta.insertId, row.address, assocAddressesToBalance[row.address]]);
 				});
 				conn.addQuery(arrQueries, "COMMIT");
 				async.series(arrQueries, () => {
