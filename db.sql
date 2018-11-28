@@ -16,9 +16,10 @@ CREATE TABLE user_addresses (
     PRIMARY KEY(address),
     FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
-CREATE INDEX byDeviceAddresses ON user_addresses(device_address);
+CREATE INDEX byUserAddresses ON user_addresses(address);
 
 CREATE TABLE draws (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     bitcoin_hash CHAR(64) NOT NULL,
     hash CHAR(64) NOT NULL,
     winner_address CHAR(32) NOT NULL,
@@ -31,16 +32,16 @@ CREATE TABLE draws (
     paid_referrer_bb_unit CHAR(44) NULL,
     sum INT NOT NULL DEFAULT 0,
     date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(bitcoin_hash),
     FOREIGN KEY (winner_address) REFERENCES user_addresses(address),
     FOREIGN KEY (referrer_address) REFERENCES user_addresses(address)
 );
 
 CREATE TABLE prev_balances (
+    draw_id INT NOT NULL,
     bitcoin_hash CHAR(64) NOT NULL,
     address CHAR(32) NOT NULL,
     balance INT NOT NULL,
     date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(bitcoin_hash, address),
+    PRIMARY KEY(address),
     FOREIGN KEY (address) REFERENCES user_addresses(address)
 );

@@ -88,7 +88,7 @@ eventBus.once('headless_wallet_ready', () => {
 		} else if (!userInfo || !addressesRows.length || text === 'addNewAddress') {
 			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address');
 		} else if (text === 'skipRef') {
-			await setRefCode(from_address, '-');
+			await setRefCode(from_address, null);
 			await setStep(from_address, 'go');
 			await sendGo(from_address, userInfo);
 		} else if (text === 'ref') {
@@ -169,17 +169,16 @@ async function addressBelongsToUser(device_address, address) {
 
 async function saveAddress(device_address, user_address) {
 	let rows = await db.query("SELECT device_address FROM users WHERE device_address = ?", [device_address]);
-	let balance = await getAddressBalance(user_address);
 	if (!rows.length) {
 		let code = makeCode();
 		while ((await db.query("SELECT code FROM users WHERE code = ?", [code])).length) {
 			code = makeCode();
 		}
 		await db.query("INSERT INTO users (device_address, code) values (?,?)", [device_address, code]);
-		await db.query("INSERT INTO user_addresses (device_address, address,prevBalance) values (?,?,?)", [device_address, user_address, balance]);
+		await db.query("INSERT INTO user_addresses (device_address, address) values (?,?)", [device_address, user_address]);
 	} else {
-		await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address, balance) values (?,?,?)",
-			[device_address, user_address, balance]);
+		await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address) values (?,?)",
+			[device_address, user_address]);
 	}
 }
 
@@ -250,22 +249,6 @@ setInterval(async () => {
 			address = ? AND \n\
 			feed_name='bitcoin_hash' AND sequence='good' AND is_stable=1 ORDER BY _mci DESC LIMIT 1", [conf.oracle]);
 		
-		await new Promise(resolve => {
-			let arrQueries = [];
-			db.takeConnectionFromPool(function (conn) {
-				conn.addQuery(arrQueries, "BEGIN");
-				rows1.forEach(row => {
-					conn.addQuery(arrQueries, "INSERT INTO prev_balances (bitcoin_hash, address, balance) values (?,?,?)",
-						[rows[0].value, row.address, assocAddressesToBalance[row.address]]);
-				});
-				conn.addQuery(arrQueries, "COMMIT");
-				async.series(arrQueries, () => {
-					conn.release();
-					resolve();
-				});
-			});
-		});
-		
 		let value = rows[0].value;
 		let hash = crypto.createHash('sha256').update(value).digest('hex');
 		let number = new BigNumber(hash, 16);
@@ -289,8 +272,23 @@ setInterval(async () => {
 			let rows3 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [refAddress]);
 			refDeviceAddress = rows3[0].device_address;
 		}
-		await db.query("INSERT INTO draws (bitcoin_hash, hash, winner_address, referrer_address, sum) values (?,?,?,?,?)",
+		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, hash, winner_address, referrer_address, sum) values (?,?,?,?,?)",
 			[value, hash, winner_address, refAddress, sum.toNumber()]);
+		await new Promise(resolve => {
+			let arrQueries = [];
+			db.takeConnectionFromPool(function (conn) {
+				conn.addQuery(arrQueries, "BEGIN");
+				rows1.forEach(row => {
+					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, bitcoin_hash, address, balance) values (?,?,?,?)",
+						[insertMeta.insertId, rows[0].value, row.address, assocAddressesToBalance[row.address]]);
+				});
+				conn.addQuery(arrQueries, "COMMIT");
+				async.series(arrQueries, () => {
+					conn.release();
+					resolve();
+				});
+			});
+		});
 		pay(value);
 		await sendNotification(winnerDeviceAddress, refDeviceAddress, winner_address, refAddress);
 	}
@@ -445,7 +443,7 @@ async function getReferrerFromAddress(address) {
 	if (!rows.length || (rows.length && rows[0].attested === 0)) {
 		return null;
 	} else {
-		if (rows[0].referrerCode === '' || rows[0].referrerCode === '-' || rows[0].referrerCode === null) return null;
+		if (rows[0].referrerCode === '' || rows[0].referrerCode === null) return null;
 		let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE code = ? AND attested = 1 AND signed = 1",
 			[rows[0].referrerCode]);
 		return rows2.length ? rows2[0].address : null;
@@ -472,16 +470,16 @@ app.use(views(__dirname + '/views', {
 
 app.use(async ctx => {
 	let rows = await db.query("SELECT * FROM draws ORDER BY date DESC LIMIT 0,1");
-	let objAddresses = await getAddressesInfoForSite();
+	let addressesInfo = await getAddressesInfoForSite();
 	if (rows.length) {
-		objAddresses.nonDraws = false;
-		objAddresses.winner_address = rows[0].winner_address;
-		objAddresses.referrer_address = rows[0].referrer_address;
-		objAddresses.lastSum = rows[0].sum;
+		addressesInfo.nonDraws = false;
+		addressesInfo.winner_address = rows[0].winner_address;
+		addressesInfo.referrer_address = rows[0].referrer_address;
+		addressesInfo.lastSum = rows[0].sum;
 	} else {
-		objAddresses.nonDraws = true;
+		addressesInfo.nonDraws = true;
 	}
-	await ctx.render('index', objAddresses);
+	await ctx.render('index', addressesInfo);
 });
 
 async function getAddressesInfoForSite() {
