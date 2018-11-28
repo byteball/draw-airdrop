@@ -31,17 +31,22 @@ exports.unitValue = 1000000000;
 
 exports.oracle = 'FOPUBEUPBC6YLIQDLKL6EW775BMV7YOH';
 
-exports.nextReward = '19.11.2018 13:38';
-exports.intervalReward = 7; // days
+exports.drawDate = '19.11.2018 13:38';
+exports.intervalDrawings = 7; // days
 
-exports.rewardB = 10;
-exports.refRewardB = 5;
-exports.rewardBB = 50;
-exports.refRewardBB = 50;
+exports.rewardForWinnerInBytes = 10;
+exports.rewardForReferrerInBytes = 5;
+exports.rewardForWinnerInBlackBytes = 50;
+exports.rewardForReffererInBlackBytes = 50;
 
 exports.amountForNextCalc = 10;
 
-exports.rePaidInterval = 60000 * 10;
+exports.payoutCheckInterval = 60000 * 10;
+
+exports.multiplierMoreAmountNextCalc = 0.1;
+exports.multiplierNonAttested = 0.1;
+exports.multiplierForIncreasingBalance = 0.1;
+exports.multiplierForDecreaseBalance = 0.1;
 
 exports.arrRealNameAttestors = ['I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT'];
 
