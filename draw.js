@@ -86,7 +86,7 @@ eventBus.once('headless_wallet_ready', () => {
 					await sendGo(from_address, userInfo);
 				} else {
 					await setStep(from_address, 'ref');
-					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his(her) ref code. Or [skip](command:skipRef)");
+					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skipRef) this step. If you win, the referrer will also win an additional prize.");
 				}
 			});
 		} else if (!userInfo || !addressesRows.length || text === 'addNewAddress') {
