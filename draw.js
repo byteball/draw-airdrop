@@ -407,23 +407,23 @@ async function calcPoints(balance, address) {
 	let change = new BigNumber(0);
 	if (rows[0].attested) {
 		if (balance > amountForNextCalc) {
-			balance = new BigNumber(amountForNextCalc).add(new BigNumber(balance - amountForNextCalc).times(conf.multiplierMoreAmountNextCalc));
-			pointsForBalanceAboveThreshold = new BigNumber(balance - amountForNextCalc).times(conf.multiplierMoreAmountNextCalc).div(conf.unitValue);
+			balance = new BigNumber(amountForNextCalc).add(new BigNumber(balance - amountForNextCalc).times(conf.multiplierForAmountAboveThreshold));
+			pointsForBalanceAboveThreshold = new BigNumber(balance - amountForNextCalc).times(conf.multiplierForAmountAboveThreshold).div(conf.unitValue);
 			pointsForBalanceBelowThreshold = new BigNumber(amountForNextCalc).div(conf.unitValue);
 		} else {
 			pointsForBalanceBelowThreshold = new BigNumber(balance).div(conf.unitValue);
 		}
 	} else {
-		balance = new BigNumber(balance).times(conf.multiplierNonAttested);
+		balance = new BigNumber(balance).times(conf.multiplierForNonAttested);
 	}
 	let total = new BigNumber(balance).div(conf.unitValue);
 	if (rows2.length) {
 		if (balance > rows2[0].balance) {
-			let _change = (new BigNumber(balance).minus(rows2[0].balance)).times(conf.multiplierForIncreasingBalance).div(conf.unitValue);
+			let _change = (new BigNumber(balance).minus(rows2[0].balance)).times(conf.multiplierForBalanceIncrease).div(conf.unitValue);
 			total = total.add(_change);
 			change = _change;
 		} else if (balance < rows2[0].balance) {
-			let _change = (new BigNumber(balance).minus(rows2[0].balance)).times(conf.multiplierForDecreaseBalance).div(conf.unitValue);
+			let _change = (new BigNumber(balance).minus(rows2[0].balance)).times(conf.multiplierForBalanceDecrease).div(conf.unitValue);
 			total = total.add(_change);
 			change = _change;
 		}

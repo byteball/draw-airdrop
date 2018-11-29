@@ -41,11 +41,11 @@ exports.rewardForReffererInBlackBytes = 50;
 
 exports.payoutCheckInterval = 60000 * 10;
 
-exports.balanceThreshold = 10;
-exports.multiplierMoreAmountNextCalc = 0.1;
-exports.multiplierNonAttested = 0.1;
-exports.multiplierForIncreasingBalance = 0.1;
-exports.multiplierForDecreaseBalance = 0.1;
+exports.balanceThreshold = 10; // in GB
+exports.multiplierForAmountAboveThreshold = 0.1;
+exports.multiplierForNonAttested = 0.1;
+exports.multiplierForBalanceIncrease = 0.1;
+exports.multiplierForBalanceDecrease = 0.2;
 
 exports.arrRealNameAttestors = ['I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT'];
 
