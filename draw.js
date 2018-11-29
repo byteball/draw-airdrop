@@ -133,8 +133,8 @@ async function sendGo(device_address) {
 				objPoints.pointsForBalanceAboveThreshold.toString() + ' points for sum more ' + conf.balanceThreshold + ' gb\n' : '') +
 			(objPoints.pointsForBalanceBelowThreshold.toNumber() > 0 ?
 				objPoints.pointsForBalanceBelowThreshold.toString() + ' points for sum less ' + conf.balanceThreshold + ' gb\n' : '') +
-			(objPoints.change.toNumber() ?
-				objPoints.change.toString() + ' points for the changes from the last draw' : '') +
+			(objPoints.pointsForChange.toNumber() ?
+				objPoints.pointsForChange.toString() + ' points for the changes from the last draw' : '') +
 			'';
 		sum = sum.add(objPoints.points);
 	}
@@ -397,7 +397,7 @@ async function calcPoints(balance, address) {
 		points: 0,
 		pointsForBalanceAboveThreshold: 0,
 		pointsForBalanceBelowThreshold: 0,
-		change: 0
+		pointsForChange: 0
 	};
 	
 	let bnBalance = new BigNumber(balance).div(conf.unitValue);
@@ -406,7 +406,7 @@ async function calcPoints(balance, address) {
 	let pointsForBalanceAboveThreshold = new BigNumber(0);
 	let pointsForBalanceBelowThreshold = new BigNumber(0);
 	let points = new BigNumber(0);
-	let change = new BigNumber(0);
+	let pointsForChange = new BigNumber(0);
 	if (rows[0].attested) {
 		if (balance > thresholdInBytes) {
 			pointsForBalanceAboveThreshold = bnBalance.minus(bnThreshold).times(conf.multiplierForAmountAboveThreshold);
@@ -423,14 +423,14 @@ async function calcPoints(balance, address) {
 		let prev_balance = rows2[0].balance;
 		let deltaInGB = bnBalance.minus(new BigNumber(prev_balance).div(conf.unitValue));
 		if (balance > prev_balance) {
-			change = deltaInGB.times(conf.multiplierForBalanceIncrease);
-			points = points.add(change);
+			pointsForChange = deltaInGB.times(conf.multiplierForBalanceIncrease);
+			points = points.add(pointsForChange);
 		} else if (balance < prev_balance) {
-			change = deltaInGB.times(conf.multiplierForBalanceDecrease);
-			points = points.add(change);
+			pointsForChange = deltaInGB.times(conf.multiplierForBalanceDecrease);
+			points = points.add(pointsForChange);
 		}
 	}
-	return {points: points, pointsForBalanceAboveThreshold, pointsForBalanceBelowThreshold, change};
+	return {points: points, pointsForBalanceAboveThreshold, pointsForBalanceBelowThreshold, pointsForChange};
 }
 
 async function getReferrerFromAddress(address) {
