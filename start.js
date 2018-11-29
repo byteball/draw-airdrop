@@ -319,23 +319,29 @@ function pay(bitcoin_hash) {
 		let rows = await db.query("SELECT * FROM draws WHERE bitcoin_hash = ?", [bitcoin_hash]);
 		
 		if (rows[0].paid_bytes === 0) {
-			let result = await payBytes(rows[0]);
-			if (!result.err) {
+			try {
+				let result = await payBytes(rows[0]);
 				await db.query("UPDATE draws SET paid_bytes = 1, paid_bytes_unit = ? WHERE bitcoin_hash = ?", [result.unit, bitcoin_hash]);
+			} catch (e) {
+				console.error('Error payBytes: ', e);
 			}
 		}
 		
 		if (rows[0].paid_winner_bb === 0) {
-			let result2 = await payBBWinner(rows[0]);
-			if (!result2.err) {
+			try {
+				let result2 = await payBBWinner(rows[0]);
 				await db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE bitcoin_hash = ?", [result2.unit, bitcoin_hash]);
+			} catch (e) {
+				console.error('Error payBBWinner: ', e);
 			}
 		}
 		
 		if (rows[0].paid_referrer_bb === 0) {
-			let result3 = payBBReferrer(rows[0]);
-			if (!result3.err) {
-				db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE bitcoin_hash = ?", [result3.unit, bitcoin_hash]);
+			try {
+				let result3 = payBBReferrer(rows[0]);
+				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE bitcoin_hash = ?", [result3.unit, bitcoin_hash]);
+			}catch (e) {
+				console.error('Error payBBReferrer: ', e);
 			}
 		}
 		unlock();
@@ -343,46 +349,30 @@ function pay(bitcoin_hash) {
 }
 
 function payBytes(row) {
-	return new Promise(resolve => {
-		let outputs = [{address: row.winner_address, amount: conf.rewardForWinnerInBytes}];
-		if (row.referrer_address !== null) {
-			outputs.push({address: row.referrer_address, amount: conf.rewardForReferrerInBytes});
-		}
-		headlessWallet.sendPaymentUsingOutputs('base', outputs, myAddress, (err, unit) => {
-			console.log('Pay Bytes - ', row.bitcoin_hash, ' - - ', err, unit);
-			resolve({err, unit});
-		});
-	});
+	let outputs = [{address: row.winner_address, amount: conf.rewardForWinnerInBytes}];
+	if (row.referrer_address !== null) {
+		outputs.push({address: row.referrer_address, amount: conf.rewardForReferrerInBytes});
+	}
+	
+	return headlessWallet.sendPaymentUsingOutputs('base', outputs, myAddress);
 }
 
 function payBBWinner(row) {
-	return new Promise(resolve => {
-		headlessWallet.sendPaymentUsingOutputs(constants.BLACKBYTES_ASSET, [{
-				address: row.winner_address,
-				amount: conf.rewardForWinnerInBlackBytes
-			}], myAddress,
-			(err, unit) => {
-				console.log('Pay BB Winner - ', row.bitcoin_hash, ' - - ', err, unit);
-				resolve({err, unit});
-			});
-	});
+	return headlessWallet.sendPaymentUsingOutputs(constants.BLACKBYTES_ASSET, [{
+		address: row.winner_address,
+		amount: conf.rewardForWinnerInBlackBytes
+	}], myAddress);
 }
 
 function payBBReferrer(row) {
-	return new Promise(resolve => {
-		if (row.referrer_address !== null) {
-			headlessWallet.sendPaymentUsingOutputs(constants.BLACKBYTES_ASSET, [{
-					address: row.referrer_address,
-					amount: conf.rewardForReffererInBlackBytes
-				}], myAddress,
-				(err, unit) => {
-					console.log('Pay BB referrer - ', row.bitcoin_hash, ' - - ', err, unit);
-					resolve({err, unit});
-				});
-		} else {
-			resolve({err: null, unit: '-'});
-		}
-	});
+	if (row.referrer_address !== null) {
+		return headlessWallet.sendPaymentUsingOutputs(constants.BLACKBYTES_ASSET, [{
+			address: row.referrer_address,
+			amount: conf.rewardForReffererInBlackBytes
+		}], myAddress);
+	} else {
+		return Promise.resolve({unit: '-'});
+	}
 }
 
 function updateNextRewardInConf() {
