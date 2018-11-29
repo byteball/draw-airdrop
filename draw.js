@@ -121,7 +121,7 @@ async function sendGo(device_address) {
 	const device = require('byteballcore/device');
 	let addressesRows = await getAddresses(device_address);
 	let addresses = addressesRows.map(row => row.address);
-	let assocAddressesToAttested = await checkAttestationAddresses(addresses);
+	let assocAddressesToAttested = await checkAttestationsOfAddresses(addresses);
 	let sum = new BigNumber(0);
 	let text = '';
 	for (let i = 0; i < addressesRows.length; i++) {
@@ -498,19 +498,19 @@ async function getAddressesInfoForSite() {
 	return {objAddresses, sum};
 }
 
-async function checkAttestationAddresses(addresses) {
+async function checkAttestationsOfAddresses(addresses) {
 	let assocAddressesToAttested = {};
 	addresses.forEach(address => {
 		assocAddressesToAttested[address] = false;
 	});
 	let rows = await db.query("SELECT address FROM attestations WHERE attestor_address IN(?) AND address IN(?)",
 		[conf.arrRealNameAttestors, addresses]);
-	let _addresses = [];
+	let attested_addresses = [];
 	rows.forEach(row => {
-		_addresses.push(row.address);
+		attested_addresses.push(row.address);
 		assocAddressesToAttested[row.address] = true;
 	});
-	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [_addresses]);
+	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [attested_addresses]);
 	return assocAddressesToAttested;
 }
 
