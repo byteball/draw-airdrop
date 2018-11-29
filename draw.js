@@ -308,7 +308,7 @@ async function sendNotification(winnerDeviceAddress, refDeviceAddress, winner_ad
 }
 
 setInterval(async () => {
-	let rows = await db.query("SELECT bitcoin_hash FROM draws WHERE paid_bytes = 0 OR paid_winner_bb = 0 OR paid_referrer_bb = 0");
+	let rows = await db.query("SELECT bitcoin_hash FROM draws WHERE paid_bytes = 0 OR paid_winner_bb = 0 OR (paid_referrer_bb = 0 AND referrer_address IS NOT NULL)");
 	rows.forEach(row => {
 		pay(row.bitcoin_hash);
 	})
@@ -337,7 +337,7 @@ function pay(bitcoin_hash) {
 			}
 		}
 		
-		if (draw.paid_referrer_bb === 0) {
+		if (draw.paid_referrer_bb === 0 && draw.referrer_address) {
 			try {
 				let result3 = payBBReferrer(draw);
 				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE bitcoin_hash = ?", [result3.unit, bitcoin_hash]);
@@ -365,13 +365,9 @@ async function payBBWinner(row) {
 }
 
 async function payBBReferrer(row) {
-	if (row.referrer_address !== null) {
-		let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.referrer_address]);
-		return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForReffererInBlackBytes, myAddress, row.referrer_address,
-			rows[0].device_address);
-	} else {
-		return Promise.resolve({unit: '-'});
-	}
+	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.referrer_address]);
+	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForReffererInBlackBytes, myAddress, row.referrer_address,
+		rows[0].device_address);
 }
 
 function updateNextRewardInConf() {
