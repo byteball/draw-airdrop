@@ -98,9 +98,9 @@ eventBus.once('headless_wallet_ready', () => {
 		} else if (text === 'ref') {
 			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1 AND signed = 1", [from_address]);
 			if (rows.length) {
-				device.sendMessageToDevice(from_address, 'text', 'To attract referrals, use your code: ' + userInfo.code +
-					'\nor pairing code:');
-				return device.sendMessageToDevice(from_address, 'text', device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.code);
+				const invite_code = device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.code;
+				const qr_url = conf.site+"/qr/?code="+ encodeURIComponent(invite_code);
+				return device.sendMessageToDevice(from_address, 'text', 'If you refer new users and one of them wins, you also win '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB. There are three ways to invite new users and ensure that the referrals are tracked to you:\n➡ have new users scan this QR code with wallet app '+qr_url+' , which opens this bot in the user\'s wallet, the wallet has to be already installed;\n➡ have new users copy-paste this to \"Chat > Add a new device > Accept invitation from the other device '+invite_code+' , which opens this bot in the user\'s wallet, the wallet has to be already installed;\n ➡ have new users enter your referrer code ' + userInfo.code + ' when the bot asks them about the referrer.');
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', 'To participate in the referral program you must have at least 1 attested address');
 			}
@@ -132,17 +132,17 @@ async function sendGo(device_address) {
 		let objPoints = await calcPoints(await getAddressBalance(address), address);
 		text += address + '\n(' + (attested ? 'attested' : 'non-attested') + '), points: ' + objPoints.points + '\n' +
 			(objPoints.pointsForBalanceAboveThreshold.toNumber() > 0 ?
-				objPoints.pointsForBalanceAboveThreshold.toString() + ' points for sum more ' + conf.balanceThreshold + ' gb\n' : '') +
+				objPoints.pointsForBalanceAboveThreshold.toString() + ' points for balance above ' + conf.balanceThreshold + ' GB\n' : '') +
 			(objPoints.pointsForBalanceBelowThreshold.toNumber() > 0 ?
-				objPoints.pointsForBalanceBelowThreshold.toString() + ' points for sum less ' + conf.balanceThreshold + ' gb\n' : '') +
+				objPoints.pointsForBalanceBelowThreshold.toString() + ' points for balance below ' + conf.balanceThreshold + ' GB\n' : '') +
 			(objPoints.pointsForChange.toNumber() ?
-				objPoints.pointsForChange.toString() + ' points for the changes from the last draw' : '') +
+				objPoints.pointsForChange.toString() + ' points for balance change from the previous draw' : '') +
 			'';
 		sum = sum.add(objPoints.points);
 	}
-	device.sendMessageToDevice(device_address, 'text', 'Your points: ' + sum.toString() + '\n\n' + text +
-		'\n[Add new address](command:add new address)' +
-		'\n[My ref](command:ref)');
+	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\n\n' + text +
+		'\n[Add another address](command:add new address)' +
+		'\nIf you refer new users and one of them wins, you also win. [Learn more](command:ref).');
 }
 
 function pleaseSign(address) {
@@ -362,13 +362,13 @@ function payBytes(row) {
 
 async function payBlackbytesToWinner(row) {
 	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.winner_address]);
-	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForWinnerInBlackBytes, myAddress, row.winner_address,
+	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForWinnerInBlackbytes, myAddress, row.winner_address,
 		rows[0].device_address);
 }
 
 async function payBlackbytesToReferrer(row) {
 	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.referrer_address]);
-	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForReffererInBlackBytes, myAddress, row.referrer_address,
+	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForReferrerInBlackbytes, myAddress, row.referrer_address,
 		rows[0].device_address);
 }
 
