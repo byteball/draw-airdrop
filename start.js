@@ -16,6 +16,8 @@ const mutex = require('byteballcore/mutex');
 
 BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
+const STRING_FOR_SIGN = 'I authorize the use of my signature bot: ' + conf.deviceName;
+
 let myAddress;
 
 eventBus.once('headless_wallet_ready', () => {
@@ -70,9 +72,9 @@ eventBus.once('headless_wallet_ready', () => {
 			validation.validateSignedMessage(objSignedMessage, async err => {
 				if (err)
 					return device.sendMessageToDevice(from_address, 'text', err);
-				if (objSignedMessage.signed_message !== 'I authorize the use of my signature bot: ' + conf.deviceName)
+				if (objSignedMessage.signed_message !== STRING_FOR_SIGN)
 					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
-						objSignedMessage.signed_message + ", expected: " + 'I authorize the use of my signature bot: ' + conf.deviceName);
+						objSignedMessage.signed_message + ", expected: " + STRING_FOR_SIGN);
 				if (!(await addressBelongsToUser(from_address, objSignedMessage.authors[0].address)))
 					return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " +
 						objSignedMessage.authors[0].address);
@@ -142,8 +144,7 @@ async function sendGo(device_address) {
 }
 
 function textSign() {
-	return 'Please prove ownership of your address by signing a message: [message](sign-message-request:I authorize the use of my signature bot: ' +
-		conf.deviceName + ')';
+	return 'Please prove ownership of your address by signing a message: [message](sign-message-request:' + STRING_FOR_SIGN + ')';
 }
 
 function getUserInfo(device_address) {
@@ -274,7 +275,7 @@ setInterval(async () => {
 		}
 		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, winner_address, referrer_address, sum) values (?,?,?,?)",
 			[value, winner_address, refAddress, sum.toNumber()]);
-
+		
 		await new Promise(resolve => {
 			let arrQueries = [];
 			db.takeConnectionFromPool(function (conn) {
@@ -404,7 +405,12 @@ function updateNextRewardInConf() {
 
 async function calcPoints(balance, address) {
 	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ? AND signed = 1", [address]);
-	if (!rows.length) return {total: 0, pointsForBalanceAboveThreshold: 0, pointsForBalanceBelowThreshold: 0, change: 0};
+	if (!rows.length) return {
+		total: 0,
+		pointsForBalanceAboveThreshold: 0,
+		pointsForBalanceBelowThreshold: 0,
+		change: 0
+	};
 	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? ORDER BY date DESC LIMIT 0,1", [address]);
 	
 	let amountForNextCalc = conf.balanceThreshold * conf.unitValue;
