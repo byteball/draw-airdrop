@@ -247,10 +247,8 @@ setInterval(async () => {
 			}
 		}
 		
-		let rows = await db.query("SELECT value FROM data_feeds CROSS JOIN units USING(unit) \n\
-			CROSS JOIN unit_authors USING(unit) WHERE main_chain_index > 3765166 AND _mci > 3765166 AND \n\
-			address = ? AND \n\
-			feed_name='bitcoin_hash' AND sequence='good' AND is_stable=1 ORDER BY _mci DESC LIMIT 1", [conf.oracle]);
+		let rows = await db.query("SELECT value FROM data_feeds CROSS JOIN units USING(unit) CROSS JOIN unit_authors USING(unit) \n\
+			WHERE address = ? AND +feed_name='bitcoin_hash' AND sequence='good' AND is_stable=1 ORDER BY data_feeds.rowid DESC LIMIT 1", [conf.oracle]);
 		
 		let value = rows[0].value;
 		let hash = crypto.createHash('sha256').update(value).digest('hex');
@@ -267,10 +265,9 @@ setInterval(async () => {
 			}
 		}
 		let refAddress = await getReferrerFromAddress(winner_address);
-		let winnerDeviceAddress = '';
-		let refDeviceAddress = null;
 		let rows2 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [winner_address]);
-		winnerDeviceAddress = rows2[0].device_address;
+		let winnerDeviceAddress = rows2[0].device_address;
+		let refDeviceAddress = null;
 		if (refAddress) {
 			let rows3 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [refAddress]);
 			refDeviceAddress = rows3[0].device_address;
