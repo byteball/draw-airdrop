@@ -485,9 +485,9 @@ async function getAddressesInfoForSite() {
 	});
 	
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
-			FROM outputs JOIN units USING(unit)\n\
-			WHERE is_spent=0 AND address IN(?) AND sequence='good' AND asset IS NULL\n\
-			AND is_stable = 1 GROUP BY address ORDER BY balance DESC", [addresses]);
+			FROM outputs \n\
+			WHERE is_spent=0 AND address IN("+addresses.map(db.escape).join(', ')+")  AND asset IS NULL\n\
+			GROUP BY address ORDER BY balance DESC");
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
 		let points = (await calcPoints(row.balance, row.address)).points;
