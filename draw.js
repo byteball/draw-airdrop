@@ -16,7 +16,9 @@ const mutex = require('byteballcore/mutex');
 
 BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
-const STRING_FOR_SIGN = 'I authorize the use of my signature bot: ' + conf.deviceName;
+function getTextToSign(address){
+	return "I confirm that I own the address "+address+" and want it to participate in the draw airdrop.";
+}
 
 let myAddress;
 
@@ -48,14 +50,14 @@ eventBus.once('headless_wallet_ready', () => {
 		if (validationUtils.isValidAddress(text)) {
 			let addressInfo = await getAddressInfo(text);
 			if (addressInfo && addressInfo.device_address !== from_address) {
-				device.sendMessageToDevice(from_address, 'text', 'Address already in use');
+				device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user');
 			} else {
 				if (addressInfo && addressInfo.signed === 1) {
-					return device.sendMessageToDevice(from_address, 'text', 'Address already added is participating in the draw');
+					return device.sendMessageToDevice(from_address, 'text', 'Address already added and is participating in the draw');
 				} else {
 					if (!addressInfo) await saveAddress(from_address, text);
 					await setStep(from_address, 'sign');
-					return device.sendMessageToDevice(from_address, 'text', 'I save your address. \n' + textSign());
+					return device.sendMessageToDevice(from_address, 'text', 'Saved your address.\n\n' + pleaseSign(text));
 				}
 			}
 		} else if (arrSignedMessageMatches) {
@@ -72,13 +74,13 @@ eventBus.once('headless_wallet_ready', () => {
 			validation.validateSignedMessage(objSignedMessage, async err => {
 				if (err)
 					return device.sendMessageToDevice(from_address, 'text', err);
-				if (objSignedMessage.signed_message !== STRING_FOR_SIGN)
+				let address = objSignedMessage.authors[0].address;
+				if (objSignedMessage.signed_message !== getTextToSign(address))
 					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
-						objSignedMessage.signed_message + ", expected: " + STRING_FOR_SIGN);
-				if (!(await addressBelongsToUser(from_address, objSignedMessage.authors[0].address)))
-					return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " +
-						objSignedMessage.authors[0].address);
-				await saveSigned(from_address, objSignedMessage.authors[0].address);
+						objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
+				if (!(await addressBelongsToUser(from_address, address)))
+					return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " + address);
+				await saveSigned(from_address, address);
 				if (userInfo.referrerCode) {
 					await setStep(from_address, 'go');
 					await sendGo(from_address, userInfo);
@@ -143,8 +145,8 @@ async function sendGo(device_address) {
 		'\n[My ref](command:ref)');
 }
 
-function textSign() {
-	return 'Please prove ownership of your address by signing a message: [message](sign-message-request:' + STRING_FOR_SIGN + ')';
+function pleaseSign(address) {
+	return 'Please prove ownership of your address by signing a message: [message](sign-message-request:' + getTextToSign(address) + ')';
 }
 
 function getUserInfo(device_address) {
