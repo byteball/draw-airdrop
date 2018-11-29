@@ -304,7 +304,8 @@ async function sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, 
 			(winnerDeviceAddress === row.device_address ? ' (you)' : '') + ' and the winner receives a prize of '+(conf.rewardForWinnerInBytes/1e9)+' GB and '+(conf.rewardForWinnerInBlackbytes/1e9)+' GBB, congratulations to the winner!' +
 			(referrer_address !== null 
 			? '\n\nThe winner was referred by ' + referrer_address + (refDeviceAddress === row.device_address ? ' (you)' : '') + ' and the referrer receives a prize of '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB, congratulations to the winner\'s referrer!'
-			: '')
+			: '') +
+			'\n\nThe next draw is scheduled for '+conf.drawDate+'.  You can increase your chances to win by increasing the balance you linked or referring new users.  See the [details](command:status).'
 		);
 	});
 }
@@ -382,8 +383,8 @@ function updateNextRewardInConf() {
 		json = {};
 	}
 	
-	conf.nextDate = moment(conf.drawDate, 'DD.MM.YYYY hh:mm').add(conf.drawInterval, 'days');
-	json.nextDate = conf.nextDate;
+	conf.drawDate = moment(conf.drawDate, 'DD.MM.YYYY hh:mm').add(conf.drawInterval, 'days');
+	json.drawDate = conf.drawDate;
 	fs.writeFile(userConfFile, JSON.stringify(json, null, '\t'), 'utf8', (err) => {
 		if (err)
 			throw Error('failed to write conf.json: ' + err);
