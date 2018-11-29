@@ -90,7 +90,7 @@ eventBus.once('headless_wallet_ready', () => {
 				}
 			});
 		} else if (!userInfo || !addressesRows.length || text === 'add new address') {
-			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address');
+			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address.');
 		} else if (text === 'skip ref') {
 			await setRefCode(from_address, null);
 			await setStep(from_address, 'go');
@@ -102,7 +102,7 @@ eventBus.once('headless_wallet_ready', () => {
 				const qr_url = conf.site+"/qr/?code="+ encodeURIComponent(invite_code);
 				return device.sendMessageToDevice(from_address, 'text', 'If you refer new users and one of them wins, you also win '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB. There are three ways to invite new users and ensure that the referrals are tracked to you:\n➡ have new users scan this QR code with wallet app '+qr_url+' , which opens this bot in the user\'s wallet, the wallet has to be already installed;\n➡ have new users copy-paste this to \"Chat > Add a new device > Accept invitation from the other device '+invite_code+' , which opens this bot in the user\'s wallet, the wallet has to be already installed;\n ➡ have new users enter your referrer code ' + userInfo.code + ' when the bot asks them about the referrer.');
 			} else {
-				return device.sendMessageToDevice(from_address, 'text', 'To participate in the referral program you must have at least 1 attested address');
+				return device.sendMessageToDevice(from_address, 'text', 'To participate in the referral program you need to link at least one real-name attested address.  If you are not attested yet, find "Real name attestation bot" in the Bot Store and go through the attestation.  If you are already attested, switch to your attested wallet and [link its address](command:add new address).  The Draw Airdrop Bot will not know any of your personal details, it needs just the fact that you are attested.');
 			}
 		} else if (userInfo.step === 'ref') {
 			if (userInfo.code === text) return device.sendMessageToDevice(from_address, 'text', 'You can\'t choose yourself');
@@ -111,7 +111,7 @@ eventBus.once('headless_wallet_ready', () => {
 				await setRefCode(from_address, text);
 				await sendGo(from_address, 'go');
 			} else {
-				device.sendMessageToDevice(from_address, 'text', 'Please send valid ref code or [skip](command:skip ref)');
+				device.sendMessageToDevice(from_address, 'text', 'Please send a valid referrer code or [skip](command:skip ref)');
 			}
 		} else {
 			await sendGo(from_address, userInfo);
