@@ -420,13 +420,11 @@ async function calcPoints(balance, address) {
 	if (rows2.length) {
 		let prev_balance = rows2[0].balance;
 		if (balance > prev_balance) {
-			let _change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceIncrease).div(conf.unitValue);
-			points = points.add(_change);
-			change = _change;
+			change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceIncrease).div(conf.unitValue);
+			points = points.add(change);
 		} else if (balance < prev_balance) {
-			let _change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceDecrease).div(conf.unitValue);
-			points = points.add(_change);
-			change = _change;
+			change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceDecrease).div(conf.unitValue);
+			points = points.add(change);
 		}
 	}
 	return {points: points, pointsForBalanceAboveThreshold, pointsForBalanceBelowThreshold, change};
