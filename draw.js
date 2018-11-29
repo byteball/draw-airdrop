@@ -400,30 +400,33 @@ async function calcPoints(balance, address) {
 		change: 0
 	};
 	
+	let bnBalance = new BigNumber(balance).div(conf.unitValue);
+	let bnThreshold = new BigNumber(conf.balanceThreshold);
 	let thresholdInBytes = conf.balanceThreshold * conf.unitValue;
 	let pointsForBalanceAboveThreshold = new BigNumber(0);
 	let pointsForBalanceBelowThreshold = new BigNumber(0);
+	let points = new BigNumber(0);
 	let change = new BigNumber(0);
 	if (rows[0].attested) {
 		if (balance > thresholdInBytes) {
-			balance = new BigNumber(thresholdInBytes).add(new BigNumber(balance - thresholdInBytes).times(conf.multiplierForAmountAboveThreshold));
-			pointsForBalanceAboveThreshold = new BigNumber(balance - thresholdInBytes).times(conf.multiplierForAmountAboveThreshold).div(conf.unitValue);
-			pointsForBalanceBelowThreshold = new BigNumber(thresholdInBytes).div(conf.unitValue);
+			pointsForBalanceAboveThreshold = bnBalance.minus(bnThreshold).times(conf.multiplierForAmountAboveThreshold);
+			pointsForBalanceBelowThreshold = bnThreshold;
 		} else {
-			pointsForBalanceBelowThreshold = new BigNumber(balance).div(conf.unitValue);
+			pointsForBalanceBelowThreshold = bnBalance;
 		}
+		points = pointsForBalanceBelowThreshold.add(pointsForBalanceAboveThreshold);
 	} else {
-		balance = new BigNumber(balance).times(conf.multiplierForNonAttested);
+		points = bnBalance.times(conf.multiplierForNonAttested);
 	}
-	let points = new BigNumber(balance).div(conf.unitValue);
 	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? ORDER BY date DESC LIMIT 0,1", [address]);
 	if (rows2.length) {
 		let prev_balance = rows2[0].balance;
+		let deltaInGB = bnBalance.minus(new BigNumber(prev_balance).div(conf.unitValue));
 		if (balance > prev_balance) {
-			change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceIncrease).div(conf.unitValue);
+			change = deltaInGB.times(conf.multiplierForBalanceIncrease);
 			points = points.add(change);
 		} else if (balance < prev_balance) {
-			change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceDecrease).div(conf.unitValue);
+			change = deltaInGB.times(conf.multiplierForBalanceDecrease);
 			points = points.add(change);
 		}
 	}
