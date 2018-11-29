@@ -399,17 +399,16 @@ async function calcPoints(balance, address) {
 		pointsForBalanceBelowThreshold: 0,
 		change: 0
 	};
-	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? ORDER BY date DESC LIMIT 0,1", [address]);
 	
-	let amountForNextCalc = conf.balanceThreshold * conf.unitValue;
+	let thresholdInBytes = conf.balanceThreshold * conf.unitValue;
 	let pointsForBalanceAboveThreshold = new BigNumber(0);
 	let pointsForBalanceBelowThreshold = new BigNumber(0);
 	let change = new BigNumber(0);
 	if (rows[0].attested) {
-		if (balance > amountForNextCalc) {
-			balance = new BigNumber(amountForNextCalc).add(new BigNumber(balance - amountForNextCalc).times(conf.multiplierForAmountAboveThreshold));
-			pointsForBalanceAboveThreshold = new BigNumber(balance - amountForNextCalc).times(conf.multiplierForAmountAboveThreshold).div(conf.unitValue);
-			pointsForBalanceBelowThreshold = new BigNumber(amountForNextCalc).div(conf.unitValue);
+		if (balance > thresholdInBytes) {
+			balance = new BigNumber(thresholdInBytes).add(new BigNumber(balance - thresholdInBytes).times(conf.multiplierForAmountAboveThreshold));
+			pointsForBalanceAboveThreshold = new BigNumber(balance - thresholdInBytes).times(conf.multiplierForAmountAboveThreshold).div(conf.unitValue);
+			pointsForBalanceBelowThreshold = new BigNumber(thresholdInBytes).div(conf.unitValue);
 		} else {
 			pointsForBalanceBelowThreshold = new BigNumber(balance).div(conf.unitValue);
 		}
@@ -417,13 +416,15 @@ async function calcPoints(balance, address) {
 		balance = new BigNumber(balance).times(conf.multiplierForNonAttested);
 	}
 	let total = new BigNumber(balance).div(conf.unitValue);
+	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? ORDER BY date DESC LIMIT 0,1", [address]);
 	if (rows2.length) {
-		if (balance > rows2[0].balance) {
-			let _change = (new BigNumber(balance).minus(rows2[0].balance)).times(conf.multiplierForBalanceIncrease).div(conf.unitValue);
+		let prev_balance = rows2[0].balance;
+		if (balance > prev_balance) {
+			let _change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceIncrease).div(conf.unitValue);
 			total = total.add(_change);
 			change = _change;
-		} else if (balance < rows2[0].balance) {
-			let _change = (new BigNumber(balance).minus(rows2[0].balance)).times(conf.multiplierForBalanceDecrease).div(conf.unitValue);
+		} else if (balance < prev_balance) {
+			let _change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceDecrease).div(conf.unitValue);
 			total = total.add(_change);
 			change = _change;
 		}
