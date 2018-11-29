@@ -86,12 +86,12 @@ eventBus.once('headless_wallet_ready', () => {
 					await sendGo(from_address, userInfo);
 				} else {
 					await setStep(from_address, 'ref');
-					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skipRef) this step. If you win, the referrer will also win an additional prize.");
+					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
 				}
 			});
-		} else if (!userInfo || !addressesRows.length || text === 'addNewAddress') {
+		} else if (!userInfo || !addressesRows.length || text === 'add new address') {
 			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address');
-		} else if (text === 'skipRef') {
+		} else if (text === 'skip ref') {
 			await setRefCode(from_address, null);
 			await setStep(from_address, 'go');
 			await sendGo(from_address, userInfo);
@@ -111,7 +111,7 @@ eventBus.once('headless_wallet_ready', () => {
 				await setRefCode(from_address, text);
 				await sendGo(from_address, 'go');
 			} else {
-				device.sendMessageToDevice(from_address, 'text', 'Please send valid ref code or [skip](command:skipRef)');
+				device.sendMessageToDevice(from_address, 'text', 'Please send valid ref code or [skip](command:skip ref)');
 			}
 		} else {
 			await sendGo(from_address, userInfo);
@@ -141,7 +141,7 @@ async function sendGo(device_address) {
 		sum = sum.add(objPoints.points);
 	}
 	device.sendMessageToDevice(device_address, 'text', 'Your points: ' + sum.toString() + '\n\n' + text +
-		'\n[Add new address](command:addNewAddress)' +
+		'\n[Add new address](command:add new address)' +
 		'\n[My ref](command:ref)');
 }
 
