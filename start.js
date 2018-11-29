@@ -357,19 +357,16 @@ function payBytes(row) {
 	return headlessWallet.sendPaymentUsingOutputs('base', outputs, myAddress);
 }
 
-function payBBWinner(row) {
-	return headlessWallet.sendPaymentUsingOutputs(constants.BLACKBYTES_ASSET, [{
-		address: row.winner_address,
-		amount: conf.rewardForWinnerInBlackBytes
-	}], myAddress);
+async function payBBWinner(row) {
+	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.winner_address]);
+	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForWinnerInBlackBytes, myAddress, row.winner_address,
+		rows[0].device_address);
 }
 
 function payBBReferrer(row) {
 	if (row.referrer_address !== null) {
-		return headlessWallet.sendPaymentUsingOutputs(constants.BLACKBYTES_ASSET, [{
-			address: row.referrer_address,
-			amount: conf.rewardForReffererInBlackBytes
-		}], myAddress);
+		return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForReffererInBlackBytes, myAddress, row.referrer_address,
+			rows[0].device_address);
 	} else {
 		return Promise.resolve({unit: '-'});
 	}

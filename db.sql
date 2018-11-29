@@ -40,7 +40,7 @@ CREATE TABLE prev_balances (
     address CHAR(32) NOT NULL,
     balance INT NOT NULL,
     date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(address),
+    PRIMARY KEY(draw_id, address),
     FOREIGN KEY (address) REFERENCES user_addresses(address),
     FOREIGN KEY (draw_id) REFERENCES draws(draw_id)
 );
