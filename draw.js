@@ -418,7 +418,7 @@ async function calcPoints(balance, address) {
 	} else {
 		points = bnBalance.times(conf.multiplierForNonAttested);
 	}
-	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? ORDER BY date DESC LIMIT 0,1", [address]);
+	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? AND draw_id=(SELECT draw_id FROM draws ORDER BY draw_id DESC LIMIT 1)", [address]);
 	if (rows2.length) {
 		let prev_balance = rows2[0].balance;
 		let deltaInGB = bnBalance.minus(new BigNumber(prev_balance).div(conf.unitValue));
@@ -465,7 +465,7 @@ app.use(views(__dirname + '/views', {
 }));
 
 app.use(async ctx => {
-	let rows = await db.query("SELECT * FROM draws ORDER BY date DESC LIMIT 0,1");
+	let rows = await db.query("SELECT * FROM draws ORDER BY date DESC LIMIT 1");
 	let addressesInfo = await getAddressesInfoForSite();
 	if (rows.length) {
 		addressesInfo.nonDraws = false;
