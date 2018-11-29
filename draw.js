@@ -128,7 +128,7 @@ async function sendGo(device_address) {
 		let address = addressesRows[i].address;
 		let attested = assocAddressesToAttested[address];
 		let objPoints = await calcPoints(await getAddressBalance(address), address);
-		text += address + '\n(' + (attested ? 'attested' : 'non-attested') + '), points: ' + objPoints.total + '\n' +
+		text += address + '\n(' + (attested ? 'attested' : 'non-attested') + '), points: ' + objPoints.points + '\n' +
 			(objPoints.pointsForBalanceAboveThreshold.toNumber() > 0 ?
 				objPoints.pointsForBalanceAboveThreshold.toString() + ' points for sum more ' + conf.balanceThreshold + ' gb\n' : '') +
 			(objPoints.pointsForBalanceBelowThreshold.toNumber() > 0 ?
@@ -136,7 +136,7 @@ async function sendGo(device_address) {
 			(objPoints.change.toNumber() ?
 				objPoints.change.toString() + ' points for the changes from the last draw' : '') +
 			'';
-		sum = sum.add(objPoints.total);
+		sum = sum.add(objPoints.points);
 	}
 	device.sendMessageToDevice(device_address, 'text', 'Your points: ' + sum.toString() + '\n\n' + text +
 		'\n[Add new address](command:addNewAddress)' +
@@ -238,7 +238,7 @@ setInterval(async () => {
 		for (let i = 0; i < rows1.length; i++) {
 			let row = rows1[i];
 			assocAddressesToBalance[row.address] = row.balance;
-			let points = (await calcPoints(row.balance, row.address)).total;
+			let points = (await calcPoints(row.balance, row.address)).points;
 			if (points.gt(0)) {
 				arrPoints[i] = {address: row.address, points};
 				sum = sum.add(points);
@@ -394,7 +394,7 @@ function updateNextRewardInConf() {
 async function calcPoints(balance, address) {
 	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ? AND signed = 1", [address]);
 	if (!rows.length) return {
-		total: 0,
+		points: 0,
 		pointsForBalanceAboveThreshold: 0,
 		pointsForBalanceBelowThreshold: 0,
 		change: 0
@@ -415,21 +415,21 @@ async function calcPoints(balance, address) {
 	} else {
 		balance = new BigNumber(balance).times(conf.multiplierForNonAttested);
 	}
-	let total = new BigNumber(balance).div(conf.unitValue);
+	let points = new BigNumber(balance).div(conf.unitValue);
 	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? ORDER BY date DESC LIMIT 0,1", [address]);
 	if (rows2.length) {
 		let prev_balance = rows2[0].balance;
 		if (balance > prev_balance) {
 			let _change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceIncrease).div(conf.unitValue);
-			total = total.add(_change);
+			points = points.add(_change);
 			change = _change;
 		} else if (balance < prev_balance) {
 			let _change = (new BigNumber(balance).minus(prev_balance)).times(conf.multiplierForBalanceDecrease).div(conf.unitValue);
-			total = total.add(_change);
+			points = points.add(_change);
 			change = _change;
 		}
 	}
-	return {total: total, pointsForBalanceAboveThreshold, pointsForBalanceBelowThreshold, change};
+	return {points: points, pointsForBalanceAboveThreshold, pointsForBalanceBelowThreshold, change};
 }
 
 async function getReferrerFromAddress(address) {
@@ -493,7 +493,7 @@ async function getAddressesInfoForSite() {
 			AND is_stable = 1 GROUP BY address ORDER BY balance DESC", [addresses]);
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
-		let points = (await calcPoints(row.balance, row.address)).total;
+		let points = (await calcPoints(row.balance, row.address)).points;
 		objAddresses[row.address].points = points.toString();
 		sum = sum.add(points);
 	}
