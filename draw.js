@@ -50,10 +50,10 @@ eventBus.once('headless_wallet_ready', () => {
 		if (validationUtils.isValidAddress(text)) {
 			let addressInfo = await getAddressInfo(text);
 			if (addressInfo && addressInfo.device_address !== from_address) {
-				device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user');
+				device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
 			} else {
 				if (addressInfo && addressInfo.signed === 1) {
-					return device.sendMessageToDevice(from_address, 'text', 'Address already added and is participating in the draw');
+					return device.sendMessageToDevice(from_address, 'text', 'Address already added and is participating in the draw.');
 				} else {
 					if (!addressInfo) await saveAddress(from_address, text);
 					await setStep(from_address, 'sign');
@@ -105,7 +105,7 @@ eventBus.once('headless_wallet_ready', () => {
 				return device.sendMessageToDevice(from_address, 'text', 'To participate in the referral program you need to link at least one real-name attested address.  If you are not attested yet, find "Real name attestation bot" in the Bot Store and go through the attestation.  If you are already attested, switch to your attested wallet and [link its address](command:add new address).  The Draw Airdrop Bot will not know any of your personal details, it needs just the fact that you are attested.');
 			}
 		} else if (userInfo.step === 'ref') {
-			if (userInfo.code === text) return device.sendMessageToDevice(from_address, 'text', 'You can\'t choose yourself');
+			if (userInfo.code === text) return device.sendMessageToDevice(from_address, 'text', 'You can\'t refer yourself');
 			let user = await getUserByCode(text);
 			if (user) {
 				await setRefCode(from_address, text);
@@ -277,6 +277,7 @@ setInterval(async () => {
 		}
 		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, winner_address, referrer_address, sum) values (?,?,?,?)",
 			[value, winner_address, refAddress, sum.toNumber()]);
+		let draw_id = insertMeta.insertId;
 		
 		await new Promise(resolve => {
 			let arrQueries = [];
@@ -284,7 +285,7 @@ setInterval(async () => {
 				conn.addQuery(arrQueries, "BEGIN");
 				rows1.forEach(row => {
 					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, address, balance) values (?,?,?)",
-						[insertMeta.insertId, row.address, assocAddressesToBalance[row.address]]);
+						[draw_id, row.address, assocAddressesToBalance[row.address]]);
 				});
 				conn.addQuery(arrQueries, "COMMIT");
 				async.series(arrQueries, () => {
@@ -294,17 +295,19 @@ setInterval(async () => {
 			});
 		});
 		pay(value);
-		await sendNotification(winnerDeviceAddress, refDeviceAddress, winner_address, refAddress);
+		await sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, winner_address, refAddress);
 	}
 }, 60000);
 
-async function sendNotification(winnerDeviceAddress, refDeviceAddress, winner_address, referrer_address) {
+async function sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, winner_address, referrer_address) {
 	let device = require('byteballcore/device');
 	let rows = await db.query("SELECT device_address FROM users");
 	rows.forEach(row => {
-		device.sendMessageToDevice(row.device_address, 'text', 'Winner - ' + winner_address +
-			(winnerDeviceAddress === row.device_address ? ' (you)' : '') + '\n' +
-			(referrer_address !== null ? 'referrer: ' + referrer_address + (refDeviceAddress === row.device_address ? ' (you)' : '') : '')
+		device.sendMessageToDevice(row.device_address, 'text', 'The winner of the draw #'+draw_id+' is ' + winner_address +
+			(winnerDeviceAddress === row.device_address ? ' (you)' : '') + ' and the winner receives a prize of '+(conf.rewardForWinnerInBytes/1e9)+' GB and '+(conf.rewardForWinnerInBlackbytes/1e9)+' GBB, congratulations to the winner!' +
+			(referrer_address !== null 
+			? '\n\nThe winner was referred by ' + referrer_address + (refDeviceAddress === row.device_address ? ' (you)' : '') + ' and the referrer receives a prize of '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB, congratulations to the winner\'s referrer!'
+			: '')
 		);
 	});
 }
