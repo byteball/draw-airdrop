@@ -330,19 +330,19 @@ function pay(bitcoin_hash) {
 		
 		if (draw.paid_winner_bb === 0) {
 			try {
-				let result2 = await payBBWinner(draw);
+				let result2 = await payBlackbytesToWinner(draw);
 				await db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE bitcoin_hash = ?", [result2.unit, bitcoin_hash]);
 			} catch (e) {
-				console.error('Error payBBWinner: ', e);
+				console.error('Error payBlackbytesToWinner: ', e);
 			}
 		}
 		
 		if (draw.paid_referrer_bb === 0 && draw.referrer_address) {
 			try {
-				let result3 = payBBReferrer(draw);
+				let result3 = payBlackbytesToReferrer(draw);
 				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE bitcoin_hash = ?", [result3.unit, bitcoin_hash]);
 			}catch (e) {
-				console.error('Error payBBReferrer: ', e);
+				console.error('Error payBlackbytesToReferrer: ', e);
 			}
 		}
 		unlock();
@@ -358,13 +358,13 @@ function payBytes(row) {
 	return headlessWallet.sendPaymentUsingOutputs('base', outputs, myAddress);
 }
 
-async function payBBWinner(row) {
+async function payBlackbytesToWinner(row) {
 	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.winner_address]);
 	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForWinnerInBlackBytes, myAddress, row.winner_address,
 		rows[0].device_address);
 }
 
-async function payBBReferrer(row) {
+async function payBlackbytesToReferrer(row) {
 	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.referrer_address]);
 	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForReffererInBlackBytes, myAddress, row.referrer_address,
 		rows[0].device_address);
