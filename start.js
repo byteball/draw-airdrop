@@ -363,8 +363,9 @@ async function payBBWinner(row) {
 		rows[0].device_address);
 }
 
-function payBBReferrer(row) {
+async function payBBReferrer(row) {
 	if (row.referrer_address !== null) {
+		let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.referrer_address]);
 		return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForReffererInBlackBytes, myAddress, row.referrer_address,
 			rows[0].device_address);
 	} else {
