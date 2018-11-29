@@ -82,8 +82,8 @@ eventBus.once('headless_wallet_ready', () => {
 					return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " + address);
 				await saveSigned(from_address, address);
 				if (userInfo.referrerCode) {
-					await setStep(from_address, 'go');
-					await sendGo(from_address, userInfo);
+					await setStep(from_address, 'done');
+					await showStatus(from_address);
 				} else {
 					await setStep(from_address, 'ref');
 					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
@@ -93,8 +93,8 @@ eventBus.once('headless_wallet_ready', () => {
 			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address.');
 		} else if (text === 'skip ref') {
 			await setRefCode(from_address, null);
-			await setStep(from_address, 'go');
-			await sendGo(from_address, userInfo);
+			await setStep(from_address, 'done');
+			await showStatus(from_address);
 		} else if (text === 'ref') {
 			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1 AND signed = 1", [from_address]);
 			if (rows.length) {
@@ -109,17 +109,17 @@ eventBus.once('headless_wallet_ready', () => {
 			let user = await getUserByCode(text);
 			if (user) {
 				await setRefCode(from_address, text);
-				await sendGo(from_address, 'go');
+				await showStatus(from_address);
 			} else {
 				device.sendMessageToDevice(from_address, 'text', 'Please send a valid referrer code or [skip](command:skip ref)');
 			}
 		} else {
-			await sendGo(from_address, userInfo);
+			await showStatus(from_address);
 		}
 	});
 });
 
-async function sendGo(device_address) {
+async function showStatus(device_address) {
 	const device = require('byteballcore/device');
 	let addressesRows = await getAddresses(device_address);
 	let addresses = addressesRows.map(row => row.address);
