@@ -433,14 +433,13 @@ async function calcPoints(balance, address) {
 async function getReferrerFromAddress(address) {
 	let rows = await db.query("SELECT referrerCode, attested FROM user_addresses JOIN users USING(device_address) WHERE address = ? AND signed = 1",
 		[address]);
-	if (!rows.length || (rows.length && rows[0].attested === 0)) {
+	if (!rows.length || rows[0].attested === 0)
 		return null;
-	} else {
-		if (rows[0].referrerCode === '' || rows[0].referrerCode === null) return null;
-		let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE code = ? AND attested = 1 AND signed = 1",
-			[rows[0].referrerCode]);
-		return rows2.length ? rows2[0].address : null;
-	}
+	if (!rows[0].referrerCode)
+		return null;
+	let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE code = ? AND attested = 1 AND signed = 1",
+		[rows[0].referrerCode]);
+	return rows2.length ? rows2[0].address : null;
 }
 
 function setStep(device_address, step) {
