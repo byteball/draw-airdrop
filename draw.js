@@ -317,28 +317,29 @@ setInterval(async () => {
 function pay(bitcoin_hash) {
 	mutex.lock(["pay_lock"], async (unlock) => {
 		let rows = await db.query("SELECT * FROM draws WHERE bitcoin_hash = ?", [bitcoin_hash]);
+		let draw = rows[0];
 		
-		if (rows[0].paid_bytes === 0) {
+		if (draw.paid_bytes === 0) {
 			try {
-				let result = await payBytes(rows[0]);
+				let result = await payBytes(draw);
 				await db.query("UPDATE draws SET paid_bytes = 1, paid_bytes_unit = ? WHERE bitcoin_hash = ?", [result.unit, bitcoin_hash]);
 			} catch (e) {
 				console.error('Error payBytes: ', e);
 			}
 		}
 		
-		if (rows[0].paid_winner_bb === 0) {
+		if (draw.paid_winner_bb === 0) {
 			try {
-				let result2 = await payBBWinner(rows[0]);
+				let result2 = await payBBWinner(draw);
 				await db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE bitcoin_hash = ?", [result2.unit, bitcoin_hash]);
 			} catch (e) {
 				console.error('Error payBBWinner: ', e);
 			}
 		}
 		
-		if (rows[0].paid_referrer_bb === 0) {
+		if (draw.paid_referrer_bb === 0) {
 			try {
-				let result3 = payBBReferrer(rows[0]);
+				let result3 = payBBReferrer(draw);
 				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE bitcoin_hash = ?", [result3.unit, bitcoin_hash]);
 			}catch (e) {
 				console.error('Error payBBReferrer: ', e);
