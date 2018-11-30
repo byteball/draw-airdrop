@@ -6,6 +6,7 @@ CREATE TABLE users (
 	referrerCode CHAR(10) NULL,
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
+CREATE INDEX byRefCode ON users(referrerCode);
 
 CREATE TABLE user_addresses (
 	device_address CHAR(33) NOT NULL,
