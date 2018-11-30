@@ -127,12 +127,11 @@ async function showStatus(device_address) {
 	const device = require('byteballcore/device');
 	let addressesRows = await getAddresses(device_address);
 	let addresses = addressesRows.map(row => row.address);
-	let assocAddressesToAttested = await checkAttestationsOfAddresses(addresses);
 	let sum = new BigNumber(0);
 	let text = '';
 	for (let i = 0; i < addressesRows.length; i++) {
 		let address = addressesRows[i].address;
-		let attested = assocAddressesToAttested[address];
+		let attested = addressesRows[i].attested;
 		let objPoints = await calcPoints(await getAddressBalance(address), address);
 		text += address + '\n(' + (attested ? 'attested' : 'non-attested') + '), points: ' + objPoints.points + '\n' +
 			(objPoints.pointsForBalanceAboveThreshold.toNumber() > 0 ?
@@ -183,7 +182,9 @@ async function saveAddress(device_address, user_address) {
 		}
 		await db.query("INSERT " + db.getIgnore() + " INTO users (device_address, code) values (?,?)", [device_address, code]);
 	}
-	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address) values (?,?)", [device_address, user_address]);
+	let att_rows = await db.query("SELECT 1 FROM attestations WHERE attestor_address IN(?) AND address=?", [conf.arrRealNameAttestors, user_address]);
+	let attested = (att_rows.length > 0) ? 1 : 0;
+	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address, attested) VALUES (?,?,?)", [device_address, user_address, attested]);
 }
 
 function getUserByCode(code) {
@@ -531,21 +532,13 @@ async function getAddressesInfoForSite() {
 	return {objAddresses, sum, total_balance: total_balance / 1e9};
 }
 
-async function checkAttestationsOfAddresses(addresses) {
-	let assocAddressesToAttested = {};
-	if (!addresses.length) return assocAddressesToAttested;
-	addresses.forEach(address => {
-		assocAddressesToAttested[address] = false;
-	});
-	let rows = await db.query("SELECT address FROM attestations WHERE attestor_address IN(?) AND address IN(?)",
-		[conf.arrRealNameAttestors, addresses]);
-	let attested_addresses = [];
-	rows.forEach(row => {
-		attested_addresses.push(row.address);
-		assocAddressesToAttested[row.address] = true;
-	});
-	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [attested_addresses]);
-	return assocAddressesToAttested;
+async function updateNewAttestations() {
+	let rows = await db.query("SELECT address FROM user_addresses CROSS JOIN attestations USING(address) WHERE attestor_address IN(?) AND attested=0",
+		[conf.arrRealNameAttestors]);
+	if (rows.length === 0)
+		return;
+	let new_attested_addresses = rows.map(row => row.address);
+	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [new_attested_addresses]);
 }
 
 async function getAddressInfo(address) {
@@ -564,5 +557,5 @@ function makeCode() {
 }
 
 app.listen(3000);
-
+setInterval(updateNewAttestations, 3600*1000);
 process.on('unhandledRejection', up => { throw up; });
