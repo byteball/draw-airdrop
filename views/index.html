@@ -18,7 +18,7 @@
         <th>Points</th>
         <th>Attested</th>
         <th>Referer</th>
-        <th>Points have referrals</th>
+        <th>Total points of referrals</th>
     </tr>
     <% for(var k in objAddresses) {%>
     <tr>
@@ -26,7 +26,7 @@
         <td><%= objAddresses[k].points %></td>
         <td><%= objAddresses[k].attested %></td>
         <td><%= objAddresses[k].referrerCode %></td>
-        <td><%= objAddresses[k].pointsHaveReferrals %></td>
+        <td><%= objAddresses[k].totalPointsOfReferrals %></td>
     </tr>
     <% } %>
 </table>
