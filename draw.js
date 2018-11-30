@@ -60,13 +60,7 @@ eventBus.once('headless_wallet_ready', () => {
 			if (addressInfo && addressInfo.device_address !== from_address && addressInfo.signed === 1) {
 				device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
 			} else {
-				if (addressInfo && addressInfo.signed === 1) {
-					return device.sendMessageToDevice(from_address, 'text', 'Address already added and is participating in the draw.');
-				} else {
-					if (!addressInfo || addressInfo.signed === 0) await saveAddress(from_address, text);
-					await setStep(from_address, 'sign');
-					return device.sendMessageToDevice(from_address, 'text', 'Saved your address.\n\n' + pleaseSign(text));
-				}
+				return device.sendMessageToDevice(from_address, 'text', pleaseSign(text));
 			}
 		} else if (arrSignedMessageMatches) {
 			let signedMessageBase64 = arrSignedMessageMatches[1];
@@ -91,10 +85,7 @@ eventBus.once('headless_wallet_ready', () => {
 						unlock();
 						return device.sendMessageToDevice(from_address, 'text', 'Address already signed by someone');
 					}
-					if (!(await addressBelongsToUser(from_address, address))) {
-						unlock();
-						return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " + address);
-					}
+					await saveAddress(from_address, address);
 					await saveSigned(from_address, address);
 					unlock();
 					if (userInfo.referrerCode) {
@@ -158,7 +149,7 @@ async function showStatus(device_address) {
 		sum = sum.add(objPoints.points);
 	}
 	let totalPointsOfReferrals = await getPointsOfReferrals(userInfo.code);
-	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nPoints have referrals: ' + totalPointsOfReferrals +
+	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nTotal points of referrals: ' + totalPointsOfReferrals +
 		'\n\n' + text +
 		'\nChances to win are proportianal to the points you have. Current rules:\n' +
 		getRulesText() +
@@ -185,11 +176,6 @@ function getUserInfo(device_address) {
 
 async function getAddresses(device_address) {
 	return await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND signed = 1", [device_address]);
-}
-
-async function addressBelongsToUser(device_address, address) {
-	let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND address = ?", [device_address, address]);
-	return !!rows.length;
 }
 
 async function addressSigned(address) {

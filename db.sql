@@ -6,6 +6,7 @@ CREATE TABLE users (
 	referrerCode CHAR(10) NULL,
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
+CREATE INDEX byRefCode ON users(referrerCode);
 
 CREATE TABLE user_addresses (
 	device_address CHAR(33) NOT NULL,
@@ -13,7 +14,7 @@ CREATE TABLE user_addresses (
 	signed TINYINT NOT NULL DEFAULT 0,
 	attested TINYINT NOT NULL DEFAULT 0,
 	date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	PRIMARY KEY(device_address, address),
+	PRIMARY KEY(address),
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
 CREATE INDEX byDeviceAddresses ON user_addresses(device_address);
@@ -30,7 +31,9 @@ CREATE TABLE draws (
 	paid_winner_bb_unit CHAR(44) NULL,
 	paid_referrer_bb_unit CHAR(44) NULL,
 	sum INT NOT NULL DEFAULT 0,
-	date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (winner_address) REFERENCES user_addresses(address),
+    FOREIGN KEY (referrer_address) REFERENCES user_addresses(address)
 );
 
 CREATE TABLE prev_balances (
@@ -39,5 +42,6 @@ CREATE TABLE prev_balances (
 	balance INT NOT NULL,
 	date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY(draw_id, address),
+	FOREIGN KEY (address) REFERENCES user_addresses(address),
 	FOREIGN KEY (draw_id) REFERENCES draws(draw_id)
 );
