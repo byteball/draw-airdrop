@@ -180,7 +180,7 @@ async function saveAddress(device_address, user_address) {
 		while ((await db.query("SELECT code FROM users WHERE code = ?", [code])).length) {
 			code = makeCode();
 		}
-		await db.query("INSERT " + db.getIgnore() + " INTO users (device_address, code) values (?,?)", [device_address, code]);
+		await db.query("INSERT " + db.getIgnore() + " INTO users (device_address, code) VALUES (?,?)", [device_address, code]);
 	}
 	let att_rows = await db.query("SELECT 1 FROM attestations WHERE attestor_address IN(?) AND address=?", [conf.arrRealNameAttestors, user_address]);
 	let attested = (att_rows.length > 0) ? 1 : 0;
@@ -289,7 +289,7 @@ setInterval(async () => {
 			let rows3 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [refAddress]);
 			refDeviceAddress = rows3[0].device_address;
 		}
-		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, winner_address, referrer_address, sum) values (?,?,?,?)",
+		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, winner_address, referrer_address, sum) VALUES (?,?,?,?)",
 			[value, winner_address, refAddress, sum.toNumber()]);
 		let draw_id = insertMeta.insertId;
 		
@@ -298,7 +298,7 @@ setInterval(async () => {
 			db.takeConnectionFromPool(function (conn) {
 				conn.addQuery(arrQueries, "BEGIN");
 				rows1.forEach(row => {
-					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, address, balance) values (?,?,?)",
+					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, address, balance) VALUES (?,?,?)",
 						[draw_id, row.address, assocAddressesToBalance[row.address]]);
 				});
 				conn.addQuery(arrQueries, "COMMIT");

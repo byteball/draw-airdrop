@@ -2,7 +2,7 @@ CREATE TABLE users (
 	device_address CHAR(33) NOT NULL PRIMARY KEY,
 	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	step CHAR(15) NOT NULL DEFAULT 'start',
-	code CHAR(10) NULL UNIQUE,
+	code CHAR(10) NOT NULL UNIQUE,
 	referrerCode CHAR(10) NULL,
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
