@@ -20,6 +20,14 @@ function getTextToSign(address){
 	return "I confirm that I own the address "+address+" and want it to participate in the draw airdrop.";
 }
 
+function getRulesText(){
+	return 
+		'\n➡ for real-name attested addresses, 1 point per GB of balance up to '+conf.balanceThreshold+' GB, '+conf.multiplierForAmountAboveThreshold+' point for each GB of additional balance over '+conf.balanceThreshold+' GB;\n' +
+		'\n➡ for unattested addresses, '+conf.multiplierForNonAttested+' point per GB of balance;\n' +
+		'\n➡ '+conf.multiplierForBalanceIncrease+' point per GB of balance increase over the previous draw;\n' +
+		'\n➡ -'+conf.multiplierForBalanceDecrease+' point per GB of balance decrease compared to the previous draw.\n';
+}
+
 let myAddress;
 
 eventBus.once('headless_wallet_ready', () => {
@@ -37,7 +45,7 @@ eventBus.once('headless_wallet_ready', () => {
 		if (user) {
 			await setRefCode(from_address, pairing_secret);
 		}
-		device.sendMessageToDevice(from_address, 'text', "Welcome! Please send me your address");
+		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of "+(conf.rewardForWinnerInBytes/1e9)+" GB and "+(conf.rewardForWinnerInBlackbytes/1e9)+" GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on "+conf.drawDate+" and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules: "+getRulesText()+"\nIf you refer new users to this draw and one of them wins, you also win "+(conf.rewardForReferrerInBytes/1e9)+" GB and "+(conf.rewardForReferrerInBlackbytes/1e9)+" GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
 	});
 	
 	eventBus.on('text', async (from_address, text) => {
@@ -141,8 +149,11 @@ async function showStatus(device_address) {
 		sum = sum.add(objPoints.points);
 	}
 	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\n\n' + text +
-		'\n[Add another address](command:add new address)' +
-		'\nIf you refer new users and one of them wins, you also win. [Learn more](command:ref).');
+		'\nChances to win are proportianal to the points you have. Current rules:\n' +
+		getRulesText() +
+		'\n\n[Add another address](command:add new address)' +
+		'\nIf you refer new users and one of them wins, you also win. [Learn more](command:ref).'
+	);
 }
 
 function pleaseSign(address) {
