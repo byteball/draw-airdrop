@@ -57,13 +57,13 @@ eventBus.once('headless_wallet_ready', () => {
 		
 		if (validationUtils.isValidAddress(text)) {
 			let addressInfo = await getAddressInfo(text);
-			if (addressInfo && addressInfo.device_address !== from_address) {
+			if (addressInfo && addressInfo.device_address !== from_address && addressInfo.signed === 1) {
 				device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
 			} else {
 				if (addressInfo && addressInfo.signed === 1) {
 					return device.sendMessageToDevice(from_address, 'text', 'Address already added and is participating in the draw.');
 				} else {
-					if (!addressInfo) await saveAddress(from_address, text);
+					if (!addressInfo || addressInfo.signed === 0) await saveAddress(from_address, text);
 					await setStep(from_address, 'sign');
 					return device.sendMessageToDevice(from_address, 'text', 'Saved your address.\n\n' + pleaseSign(text));
 				}
@@ -82,6 +82,8 @@ eventBus.once('headless_wallet_ready', () => {
 			validation.validateSignedMessage(objSignedMessage, async err => {
 				if (err)
 					return device.sendMessageToDevice(from_address, 'text', err);
+				if (await addressSigned(objSignedMessage.authors[0].address))
+					return device.sendMessageToDevice(from_address, 'text', 'Address already signed by someone');
 				let address = objSignedMessage.authors[0].address;
 				if (objSignedMessage.signed_message !== getTextToSign(address))
 					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
@@ -148,7 +150,9 @@ async function showStatus(device_address) {
 			'';
 		sum = sum.add(objPoints.points);
 	}
-	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\n\n' + text +
+	let pointsHaveReferrals = await getRefersPoints(userInfo.code);
+	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nPoints have referrals: ' + pointsHaveReferrals +
+		'\n\n' + text +
 		'\nChances to win are proportianal to the points you have. Current rules:\n' +
 		getRulesText() +
 		'\n\n[Add another address](command:add new address)' +
@@ -178,6 +182,11 @@ async function getAddresses(device_address) {
 
 async function addressBelongsToUser(device_address, address) {
 	let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND address = ?", [device_address, address]);
+	return !!rows.length;
+}
+
+async function addressSigned(address) {
+	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ? AND signed = 1", [address]);
 	return !!rows.length;
 }
 
@@ -231,6 +240,26 @@ async function getAddressBalance(address) {
 	} else {
 		return 0;
 	}
+}
+
+async function getRefersPoints(code) {
+	let sum = new BigNumber(0);
+	let rows = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE referrerCode = ?", [code]);
+	let addresses = rows.map(row => row.address);
+	if(!addresses.length) return "0";
+	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
+				FROM outputs JOIN units USING(unit)\n\
+				WHERE is_spent=0 AND address IN(?) AND sequence='good' AND asset IS NULL\n\
+				GROUP BY address", [addresses]);
+	
+	for (let i = 0; i < rows1.length; i++) {
+		let row = rows1[i];
+		let points = (await calcPoints(row.balance, row.address)).total;
+		if (points.gt(0)) {
+			sum = sum.add(points);
+		}
+	}
+	return sum.toString();
 }
 
 setInterval(async () => {
@@ -394,7 +423,7 @@ function updateNextRewardInConf() {
 		json = {};
 	}
 	
-	conf.drawDate = moment(conf.drawDate, 'DD.MM.YYYY hh:mm').add(conf.drawInterval, 'days');
+	conf.drawDate = moment(conf.drawDate, 'DD.MM.YYYY hh:mm').add(conf.drawInterval, 'days').format('DD.MM.YYYY hh:mm');
 	json.drawDate = conf.drawDate;
 	fs.writeFile(userConfFile, JSON.stringify(json, null, '\t'), 'utf8', (err) => {
 		if (err)
@@ -490,13 +519,21 @@ app.use(async ctx => {
 
 async function getAddressesInfoForSite() {
 	let sum = new BigNumber(0);
-	let rows = await db.query("SELECT address, attested, referrerCode FROM user_addresses JOIN users USING(device_address) WHERE signed = 1");
+	let rows = await db.query("SELECT address, attested, referrerCode, device_address FROM user_addresses JOIN users USING(device_address)\n\
+		WHERE signed = 1");
 	let objAddresses = {};
 	let addresses = [];
-	rows.forEach(row => {
+	for(let i = 0; i < rows.length; i++){
+		let row = rows[i];
 		addresses.push(row.address);
-		objAddresses[row.address] = {attested: row.attested, points: "0", referrerCode: row.referrerCode};
-	});
+		let userInfo = await getUserInfo(row.device_address);
+		objAddresses[row.address] = {
+			attested: row.attested,
+			points: "0",
+			referrerCode: row.referrerCode,
+			pointsHaveReferrals: await getRefersPoints(userInfo.code)
+		};
+	}
 	
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 			FROM outputs \n\
@@ -514,6 +551,7 @@ async function getAddressesInfoForSite() {
 
 async function checkAttestationsOfAddresses(addresses) {
 	let assocAddressesToAttested = {};
+	if (!addresses.length) return assocAddressesToAttested;
 	addresses.forEach(address => {
 		assocAddressesToAttested[address] = false;
 	});
@@ -524,6 +562,7 @@ async function checkAttestationsOfAddresses(addresses) {
 		attested_addresses.push(row.address);
 		assocAddressesToAttested[row.address] = true;
 	});
+	if (!attested_addresses.length) return [];
 	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [attested_addresses]);
 	return assocAddressesToAttested;
 }
