@@ -518,6 +518,7 @@ async function getAddressesInfoForSite() {
 		let row = rows1[i];
 		let points = (await calcPoints(row.balance, row.address)).points;
 		objAddresses[row.address].points = points.toString();
+		objAddresses[row.address].balance = row.balance / 1e9;
 		sum = sum.add(points);
 	}
 	sum = sum.toString();

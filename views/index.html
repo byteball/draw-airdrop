@@ -15,6 +15,7 @@
 <table>
     <tr>
         <th>Address</th>
+        <th>Balance</th>
         <th>Points</th>
         <th>Attested</th>
         <th>Referrer</th>
@@ -23,6 +24,7 @@
     <% for(var k in objAddresses) {%>
     <tr>
         <td><a href="https://explorer.byteball.org/#<%= k %>"><%= k %></a></td>
+        <td><%= objAddresses[k].balance %></td>
         <td><%= objAddresses[k].points %></td>
         <td><%= objAddresses[k].attested %></td>
         <td><%= objAddresses[k].referrerCode %></td>
