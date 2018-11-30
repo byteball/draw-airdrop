@@ -2,14 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Reward</title>
+    <title>Draw Airdrop</title>
+	<style>
+		.center {text-align: center}
+		.right {text-align: right}
+	</style>
 </head>
 <body>
+<h1>Next Draw: <%= drawDate %></h1>
 <% if(hadPreviousDraw) {%>
 <div>
-    Last winner: <%= winner_address %><br>
-    Last referrer: <%= referrer_address %><br>
-    Last sum: <%= lastSum %> points<br><br>
+	<h2>Results of the previous draw on <%= prev_date %></h2>
+    Winner: <%= prev_winner_address %><br>
+    Winner's referrer: <%= prev_referrer_address %><br>
+    Total points: <%= prev_sum %><br>
+    Bitcoin hash as source of randomness: <%= prev_bitcoin_hash %><br><br>
 </div>
 <% } %>
 <table>
@@ -23,16 +30,17 @@
     </tr>
     <% for(var k in objAddresses) {%>
     <tr>
-        <td><a href="https://explorer.byteball.org/#<%= k %>"><%= k %></a></td>
-        <td><%= objAddresses[k].balance %></td>
-        <td><%= objAddresses[k].points %></td>
-        <td><%= objAddresses[k].attested %></td>
+        <td><a href="https://explorer.byteball.org/#<%= k %>" target="_blank"><%= k %></a></td>
+        <td class="right"><%= objAddresses[k].balance %></td>
+        <td class="right"><%= objAddresses[k].points %></td>
+        <td class="center"><%= objAddresses[k].attested %></td>
         <td><%= objAddresses[k].referrerCode %></td>
-        <td><%= objAddresses[k].totalPointsOfReferrals %></td>
+        <td class="right"><%= objAddresses[k].totalPointsOfReferrals %></td>
     </tr>
     <% } %>
 </table>
 <br>
-Total sum: <%= sum %>
+Total balance: <%= total_balance %> GB
+Total points: <%= sum %>
 </body>
 </html>

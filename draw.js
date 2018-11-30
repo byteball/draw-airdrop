@@ -483,18 +483,23 @@ app.use(async ctx => {
 	let rows = await db.query("SELECT * FROM draws ORDER BY date DESC LIMIT 1");
 	let addressesInfo = await getAddressesInfoForSite();
 	if (rows.length) {
+		let prevDraw = rows[0];
 		addressesInfo.hadPreviousDraw = true;
-		addressesInfo.winner_address = rows[0].winner_address;
-		addressesInfo.referrer_address = rows[0].referrer_address;
-		addressesInfo.lastSum = rows[0].sum;
+		addressesInfo.prev_winner_address = prevDraw.winner_address;
+		addressesInfo.prev_referrer_address = prevDraw.referrer_address || 'none';
+		addressesInfo.prev_sum = prevDraw.sum;
+		addressesInfo.prev_bitcoin_hash = prevDraw.bitcoin_hash;
+		addressesInfo.prev_date = moment(prevDraw.date 'YYYY-MM-DD hh:mm:ss').format('DD.MM.YYYY hh:mm');
 	} else {
 		addressesInfo.hadPreviousDraw = false;
 	}
+	addressesInfo.drawDate = conf.drawDate;
 	await ctx.render('index', addressesInfo);
 });
 
 async function getAddressesInfoForSite() {
 	let sum = new BigNumber(0);
+	let total_balance = 0;
 	let rows = await db.query("SELECT address, attested, referrerCode, device_address FROM user_addresses JOIN users USING(device_address)");
 	let objAddresses = {};
 	let addresses = [];
@@ -520,9 +525,10 @@ async function getAddressesInfoForSite() {
 		objAddresses[row.address].points = points.toString();
 		objAddresses[row.address].balance = row.balance / 1e9;
 		sum = sum.add(points);
+		total_balance += row.balance;
 	}
 	sum = sum.toString();
-	return {objAddresses, sum};
+	return {objAddresses, sum, total_balance: total_balance / 1e9};
 }
 
 async function checkAttestationsOfAddresses(addresses) {
