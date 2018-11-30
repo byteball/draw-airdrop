@@ -58,7 +58,11 @@ eventBus.once('headless_wallet_ready', () => {
 		if (validationUtils.isValidAddress(text)) {
 			let addressInfo = await getAddressInfo(text);
 			if (addressInfo) {
-				device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
+				if(addressInfo.device_address === from_address){
+					return device.sendMessageToDevice(from_address, 'text', 'Address already added and is participating in the draw.');
+				} else {
+					device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
+				}
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', pleaseSign(text));
 			}
