@@ -57,7 +57,7 @@ eventBus.once('headless_wallet_ready', () => {
 		
 		if (validationUtils.isValidAddress(text)) {
 			let addressInfo = await getAddressInfo(text);
-			if (addressInfo && addressInfo.device_address !== from_address && addressInfo.signed === 1) {
+			if (addressInfo) {
 				device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', pleaseSign(text));
@@ -80,22 +80,16 @@ eventBus.once('headless_wallet_ready', () => {
 				if (objSignedMessage.signed_message !== getTextToSign(address))
 					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
 						objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
-				mutex.lock(["arrSignedMessageMatches_" + address], async (unlock) => {
-					if (await addressSigned(objSignedMessage.authors[0].address)) {
-						unlock();
-						return device.sendMessageToDevice(from_address, 'text', 'Address already signed by someone');
-					}
-					await saveAddress(from_address, address);
-					await saveSigned(from_address, address);
-					unlock();
-					if (userInfo.referrerCode) {
-						await setStep(from_address, 'done');
-						await showStatus(from_address);
-					} else {
-						await setStep(from_address, 'ref');
-						device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
-					}
-				});
+				if(await getAddressInfo(text))
+					return device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
+				await saveAddress(from_address, address);
+				if (userInfo.referrerCode) {
+					await setStep(from_address, 'done');
+					await showStatus(from_address);
+				} else {
+					await setStep(from_address, 'ref');
+					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
+				}
 			});
 		} else if (!userInfo || !addressesRows.length || text === 'add new address') {
 			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address.');
@@ -104,7 +98,7 @@ eventBus.once('headless_wallet_ready', () => {
 			await setStep(from_address, 'done');
 			await showStatus(from_address);
 		} else if (text === 'ref') {
-			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1 AND signed = 1", [from_address]);
+			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1", [from_address]);
 			if (rows.length) {
 				const invite_code = device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.code;
 				const qr_url = conf.site + "/qr/?code=" + encodeURIComponent(invite_code);
@@ -175,12 +169,7 @@ function getUserInfo(device_address) {
 }
 
 async function getAddresses(device_address) {
-	return await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND signed = 1", [device_address]);
-}
-
-async function addressSigned(address) {
-	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ? AND signed = 1", [address]);
-	return !!rows.length;
+	return await db.query("SELECT * FROM user_addresses WHERE device_address = ?", [device_address]);
 }
 
 async function saveAddress(device_address, user_address) {
@@ -196,11 +185,6 @@ async function saveAddress(device_address, user_address) {
 		await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address) values (?,?)",
 			[device_address, user_address]);
 	}
-}
-
-async function saveSigned(device_address, address) {
-	await db.query("UPDATE user_addresses SET signed = 1 WHERE device_address = ? AND address = ?", [device_address, address]);
-	return true;
 }
 
 function getUserByCode(code) {
@@ -237,7 +221,7 @@ async function getAddressBalance(address) {
 
 async function getPointsOfReferrals(code) {
 	let sum = new BigNumber(0);
-	let rows = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE referrerCode = ? AND signed = 1", [code]);
+	let rows = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE referrerCode = ?", [code]);
 	let addresses = rows.map(row => row.address);
 	if (!addresses.length) return "0";
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
@@ -260,14 +244,14 @@ setInterval(async () => {
 		updateNextRewardInConf();
 		let arrPoints = [];
 		let sum = new BigNumber(0);
-		let rows3 = await db.query("SELECT address FROM user_addresses WHERE signed = 1");
+		let rows3 = await db.query("SELECT address FROM user_addresses");
 		let assocAddressesToBalance = {};
 		rows3.forEach(row => {
 			assocAddressesToBalance[row.address] = 0;
 		});
 		let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 				FROM outputs JOIN units USING(unit)\n\
-				WHERE is_spent=0 AND address IN(SELECT address FROM user_addresses WHERE signed = 1) AND sequence='good' AND asset IS NULL\n\
+				WHERE is_spent=0 AND address IN(SELECT address FROM user_addresses) AND sequence='good' AND asset IS NULL\n\
 				GROUP BY address", []);
 		
 		for (let i = 0; i < rows1.length; i++) {
@@ -425,7 +409,7 @@ function updateNextRewardInConf() {
 }
 
 async function calcPoints(balance, address) {
-	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ? AND signed = 1", [address]);
+	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ?", [address]);
 	if (!rows.length) return {
 		points: 0,
 		pointsForBalanceAboveThreshold: 0,
@@ -467,13 +451,13 @@ async function calcPoints(balance, address) {
 }
 
 async function getReferrerFromAddress(address) {
-	let rows = await db.query("SELECT referrerCode, attested FROM user_addresses JOIN users USING(device_address) WHERE address = ? AND signed = 1",
+	let rows = await db.query("SELECT referrerCode, attested FROM user_addresses JOIN users USING(device_address) WHERE address = ?",
 		[address]);
 	if (!rows.length || rows[0].attested === 0)
 		return null;
 	if (!rows[0].referrerCode)
 		return null;
-	let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE code = ? AND attested = 1 AND signed = 1",
+	let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE code = ? AND attested = 1",
 		[rows[0].referrerCode]);
 	return rows2.length ? rows2[0].address : null;
 }
@@ -512,8 +496,7 @@ app.use(async ctx => {
 
 async function getAddressesInfoForSite() {
 	let sum = new BigNumber(0);
-	let rows = await db.query("SELECT address, attested, referrerCode, device_address FROM user_addresses JOIN users USING(device_address)\n\
-		WHERE signed = 1");
+	let rows = await db.query("SELECT address, attested, referrerCode, device_address FROM user_addresses JOIN users USING(device_address)");
 	let objAddresses = {};
 	let addresses = [];
 	for(let i = 0; i < rows.length; i++){
