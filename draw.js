@@ -308,7 +308,7 @@ setInterval(async () => {
 				});
 			});
 		});
-		pay(value);
+		pay(draw_id);
 		await sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, winner_address, refAddress);
 	}
 }, 60000);
@@ -328,21 +328,21 @@ async function sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, 
 }
 
 setInterval(async () => {
-	let rows = await db.query("SELECT bitcoin_hash FROM draws WHERE paid_bytes = 0 OR paid_winner_bb = 0 OR (paid_referrer_bb = 0 AND referrer_address IS NOT NULL)");
+	let rows = await db.query("SELECT draw_id FROM draws WHERE paid_bytes = 0 OR paid_winner_bb = 0 OR (paid_referrer_bb = 0 AND referrer_address IS NOT NULL)");
 	rows.forEach(row => {
-		pay(row.bitcoin_hash);
+		pay(row.draw_id);
 	})
 }, conf.payoutCheckInterval);
 
-function pay(bitcoin_hash) {
+function pay(draw_id) {
 	mutex.lock(["pay_lock"], async (unlock) => {
-		let rows = await db.query("SELECT * FROM draws WHERE bitcoin_hash = ?", [bitcoin_hash]);
+		let rows = await db.query("SELECT * FROM draws WHERE draw_id = ?", [draw_id]);
 		let draw = rows[0];
 		
 		if (draw.paid_bytes === 0) {
 			try {
 				let result = await payBytes(draw);
-				await db.query("UPDATE draws SET paid_bytes = 1, paid_bytes_unit = ? WHERE bitcoin_hash = ?", [result.unit, bitcoin_hash]);
+				await db.query("UPDATE draws SET paid_bytes = 1, paid_bytes_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
 			} catch (e) {
 				console.error('Error payBytes: ', e);
 			}
@@ -351,7 +351,7 @@ function pay(bitcoin_hash) {
 		if (draw.paid_winner_bb === 0) {
 			try {
 				let result2 = await payBlackbytesToWinner(draw);
-				await db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE bitcoin_hash = ?", [result2.unit, bitcoin_hash]);
+				await db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE draw_id = ?", [result2.unit, draw_id]);
 			} catch (e) {
 				console.error('Error payBlackbytesToWinner: ', e);
 			}
@@ -360,7 +360,7 @@ function pay(bitcoin_hash) {
 		if (draw.paid_referrer_bb === 0 && draw.referrer_address) {
 			try {
 				let result3 = payBlackbytesToReferrer(draw);
-				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE bitcoin_hash = ?", [result3.unit, bitcoin_hash]);
+				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE draw_id = ?", [result3.unit, draw_id]);
 			}catch (e) {
 				console.error('Error payBlackbytesToReferrer: ', e);
 			}
