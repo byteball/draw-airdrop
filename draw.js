@@ -21,7 +21,7 @@ function getTextToSign(address){
 }
 
 function getRulesText(){
-	return 
+	return
 		'\n➡ for real-name attested addresses, 1 point per GB of balance up to '+conf.balanceThreshold+' GB, '+conf.multiplierForAmountAboveThreshold+' point for each GB of additional balance over '+conf.balanceThreshold+' GB;\n' +
 		'\n➡ for unattested addresses, '+conf.multiplierForNonAttested+' point per GB of balance;\n' +
 		'\n➡ '+conf.multiplierForBalanceIncrease+' point per GB of balance increase over the previous draw;\n' +
@@ -45,7 +45,7 @@ eventBus.once('headless_wallet_ready', () => {
 		if (user) {
 			await setRefCode(from_address, pairing_secret);
 		}
-		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of "+(conf.rewardForWinnerInBytes/1e9)+" GB and "+(conf.rewardForWinnerInBlackbytes/1e9)+" GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on "+conf.drawDate+" and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules: "+getRulesText()+"\nIf you refer new users to this draw and one of them wins, you also win "+(conf.rewardForReferrerInBytes/1e9)+" GB and "+(conf.rewardForReferrerInBlackbytes/1e9)+" GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
+		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on " + conf.drawDate + " and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules: " + getRulesText() + "\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
 	});
 	
 	eventBus.on('text', async (from_address, text) => {
@@ -69,38 +69,34 @@ eventBus.once('headless_wallet_ready', () => {
 				}
 			}
 		} else if (arrSignedMessageMatches) {
-			mutex.lock(["arrSignedMessageMatches"], async (unlock) => {
-				let signedMessageBase64 = arrSignedMessageMatches[1];
-				let validation = require('byteballcore/validation.js');
-				let signedMessageJson = Buffer(signedMessageBase64, 'base64').toString('utf8');
-				let objSignedMessage;
-				try {
-					objSignedMessage = JSON.parse(signedMessageJson);
-				}
-				catch (e) {
-					unlock();
-					return null;
-				}
-				validation.validateSignedMessage(objSignedMessage, async err => {
-					if (err) {
-						unlock();
-						return device.sendMessageToDevice(from_address, 'text', err);
-					}
+			let signedMessageBase64 = arrSignedMessageMatches[1];
+			let validation = require('byteballcore/validation.js');
+			let signedMessageJson = Buffer(signedMessageBase64, 'base64').toString('utf8');
+			let objSignedMessage;
+			try {
+				objSignedMessage = JSON.parse(signedMessageJson);
+			}
+			catch (e) {
+				return null;
+			}
+			validation.validateSignedMessage(objSignedMessage, async err => {
+				if (err)
+					return device.sendMessageToDevice(from_address, 'text', err);
+				let address = objSignedMessage.authors[0].address;
+				if (objSignedMessage.signed_message !== getTextToSign(address))
+					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
+						objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
+				mutex.lock(["arrSignedMessageMatches_" + address], async (unlock) => {
 					if (await addressSigned(objSignedMessage.authors[0].address)) {
 						unlock();
 						return device.sendMessageToDevice(from_address, 'text', 'Address already signed by someone');
-					}
-					let address = objSignedMessage.authors[0].address;
-					if (objSignedMessage.signed_message !== getTextToSign(address)) {
-						unlock();
-						return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
-							objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
 					}
 					if (!(await addressBelongsToUser(from_address, address))) {
 						unlock();
 						return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " + address);
 					}
 					await saveSigned(from_address, address);
+					unlock();
 					if (userInfo.referrerCode) {
 						await setStep(from_address, 'done');
 						await showStatus(from_address);
@@ -108,7 +104,6 @@ eventBus.once('headless_wallet_ready', () => {
 						await setStep(from_address, 'ref');
 						device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
 					}
-					unlock();
 				});
 			});
 		} else if (!userInfo || !addressesRows.length || text === 'add new address') {
@@ -121,8 +116,8 @@ eventBus.once('headless_wallet_ready', () => {
 			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1 AND signed = 1", [from_address]);
 			if (rows.length) {
 				const invite_code = device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.code;
-				const qr_url = conf.site+"/qr/?code="+ encodeURIComponent(invite_code);
-				return device.sendMessageToDevice(from_address, 'text', 'If you refer new users and one of them wins, you also win '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB. There are three ways to invite new users and ensure that the referrals are tracked to you:\n➡ have new users scan this QR code with wallet app '+qr_url+' which opens this bot in the user\'s wallet;\n➡ have new users copy-paste this to \"Chat > Add a new device > Accept invitation from the other device '+invite_code+' which opens this bot in the user\'s wallet;\n ➡ have new users start this bot from the Bot Store and enter your referrer code ' + userInfo.code + ' when the bot asks them about the referrer.');
+				const qr_url = conf.site + "/qr/?code=" + encodeURIComponent(invite_code);
+				return device.sendMessageToDevice(from_address, 'text', 'If you refer new users and one of them wins, you also win ' + (conf.rewardForReferrerInBytes / 1e9) + ' GB and ' + (conf.rewardForReferrerInBlackbytes / 1e9) + ' GBB. There are three ways to invite new users and ensure that the referrals are tracked to you:\n➡ have new users scan this QR code with wallet app ' + qr_url + ' which opens this bot in the user\'s wallet;\n➡ have new users copy-paste this to \"Chat > Add a new device > Accept invitation from the other device ' + invite_code + ' which opens this bot in the user\'s wallet;\n ➡ have new users start this bot from the Bot Store and enter your referrer code ' + userInfo.code + ' when the bot asks them about the referrer.');
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', 'To participate in the referral program you need to link at least one real-name attested address.  If you are not attested yet, find "Real name attestation bot" in the Bot Store and go through the attestation.  If you are already attested, switch to your attested wallet and [link its address](command:add new address).  The Draw Airdrop Bot will not know any of your personal details, it needs just the fact that you are attested.');
 			}
@@ -162,8 +157,8 @@ async function showStatus(device_address) {
 			'';
 		sum = sum.add(objPoints.points);
 	}
-	let pointsHaveReferrals = await getPointsOfReferrals(userInfo.code);
-	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nPoints have referrals: ' + pointsHaveReferrals +
+	let totalPointsOfReferrals = await getPointsOfReferrals(userInfo.code);
+	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nPoints have referrals: ' + totalPointsOfReferrals +
 		'\n\n' + text +
 		'\nChances to win are proportianal to the points you have. Current rules:\n' +
 		getRulesText() +
@@ -258,7 +253,7 @@ async function getPointsOfReferrals(code) {
 	let sum = new BigNumber(0);
 	let rows = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE referrerCode = ? AND signed = 1", [code]);
 	let addresses = rows.map(row => row.address);
-	if(!addresses.length) return "0";
+	if (!addresses.length) return "0";
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 				FROM outputs JOIN units USING(unit)\n\
 				WHERE is_spent=0 AND address IN(?) AND sequence='good' AND asset IS NULL\n\
@@ -354,7 +349,7 @@ async function sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, 
 	rows.forEach(row => {
 		device.sendMessageToDevice(row.device_address, 'text', 'The winner of the draw #'+draw_id+' is ' + winner_address +
 			(winnerDeviceAddress === row.device_address ? ' (you)' : '') + ' and the winner receives a prize of '+(conf.rewardForWinnerInBytes/1e9)+' GB and '+(conf.rewardForWinnerInBlackbytes/1e9)+' GBB, congratulations to the winner!' +
-			(referrer_address !== null 
+			(referrer_address !== null
 			? '\n\nThe winner was referred by ' + referrer_address + (refDeviceAddress === row.device_address ? ' (you)' : '') + ' and the referrer receives a prize of '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB, congratulations to the winner\'s referrer!'
 			: '') +
 			'\n\nThe next draw is scheduled for '+conf.drawDate+'.  You can increase your chances to win by increasing the balance you linked or referring new users.  See the [details](command:status).'
@@ -543,13 +538,13 @@ async function getAddressesInfoForSite() {
 			attested: row.attested,
 			points: "0",
 			referrerCode: row.referrerCode,
-			pointsHaveReferrals: await getPointsOfReferrals(userInfo.code)
+			totalPointsOfReferrals: await getPointsOfReferrals(userInfo.code)
 		};
 	}
 	
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 			FROM outputs \n\
-			WHERE is_spent=0 AND address IN("+addresses.map(db.escape).join(', ')+")  AND asset IS NULL\n\
+			WHERE is_spent=0 AND address IN(" + addresses.map(db.escape).join(', ') + ")  AND asset IS NULL\n\
 			GROUP BY address ORDER BY balance DESC");
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
