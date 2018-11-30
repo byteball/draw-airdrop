@@ -69,35 +69,47 @@ eventBus.once('headless_wallet_ready', () => {
 				}
 			}
 		} else if (arrSignedMessageMatches) {
-			let signedMessageBase64 = arrSignedMessageMatches[1];
-			let validation = require('byteballcore/validation.js');
-			let signedMessageJson = Buffer(signedMessageBase64, 'base64').toString('utf8');
-			let objSignedMessage;
-			try {
-				objSignedMessage = JSON.parse(signedMessageJson);
-			}
-			catch (e) {
-				return null;
-			}
-			validation.validateSignedMessage(objSignedMessage, async err => {
-				if (err)
-					return device.sendMessageToDevice(from_address, 'text', err);
-				if (await addressSigned(objSignedMessage.authors[0].address))
-					return device.sendMessageToDevice(from_address, 'text', 'Address already signed by someone');
-				let address = objSignedMessage.authors[0].address;
-				if (objSignedMessage.signed_message !== getTextToSign(address))
-					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
-						objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
-				if (!(await addressBelongsToUser(from_address, address)))
-					return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " + address);
-				await saveSigned(from_address, address);
-				if (userInfo.referrerCode) {
-					await setStep(from_address, 'done');
-					await showStatus(from_address);
-				} else {
-					await setStep(from_address, 'ref');
-					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
+			mutex.lock(["arrSignedMessageMatches"], async (unlock) => {
+				let signedMessageBase64 = arrSignedMessageMatches[1];
+				let validation = require('byteballcore/validation.js');
+				let signedMessageJson = Buffer(signedMessageBase64, 'base64').toString('utf8');
+				let objSignedMessage;
+				try {
+					objSignedMessage = JSON.parse(signedMessageJson);
 				}
+				catch (e) {
+					unlock();
+					return null;
+				}
+				validation.validateSignedMessage(objSignedMessage, async err => {
+					if (err) {
+						unlock();
+						return device.sendMessageToDevice(from_address, 'text', err);
+					}
+					if (await addressSigned(objSignedMessage.authors[0].address)) {
+						unlock();
+						return device.sendMessageToDevice(from_address, 'text', 'Address already signed by someone');
+					}
+					let address = objSignedMessage.authors[0].address;
+					if (objSignedMessage.signed_message !== getTextToSign(address)) {
+						unlock();
+						return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
+							objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
+					}
+					if (!(await addressBelongsToUser(from_address, address))) {
+						unlock();
+						return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " + address);
+					}
+					await saveSigned(from_address, address);
+					if (userInfo.referrerCode) {
+						await setStep(from_address, 'done');
+						await showStatus(from_address);
+					} else {
+						await setStep(from_address, 'ref');
+						device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
+					}
+					unlock();
+				});
 			});
 		} else if (!userInfo || !addressesRows.length || text === 'add new address') {
 			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address.');
@@ -150,7 +162,7 @@ async function showStatus(device_address) {
 			'';
 		sum = sum.add(objPoints.points);
 	}
-	let pointsHaveReferrals = await getRefersPoints(userInfo.code);
+	let pointsHaveReferrals = await getPointsOfReferrals(userInfo.code);
 	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nPoints have referrals: ' + pointsHaveReferrals +
 		'\n\n' + text +
 		'\nChances to win are proportianal to the points you have. Current rules:\n' +
@@ -242,9 +254,9 @@ async function getAddressBalance(address) {
 	}
 }
 
-async function getRefersPoints(code) {
+async function getPointsOfReferrals(code) {
 	let sum = new BigNumber(0);
-	let rows = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE referrerCode = ?", [code]);
+	let rows = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE referrerCode = ? AND signed = 1", [code]);
 	let addresses = rows.map(row => row.address);
 	if(!addresses.length) return "0";
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
@@ -531,7 +543,7 @@ async function getAddressesInfoForSite() {
 			attested: row.attested,
 			points: "0",
 			referrerCode: row.referrerCode,
-			pointsHaveReferrals: await getRefersPoints(userInfo.code)
+			pointsHaveReferrals: await getPointsOfReferrals(userInfo.code)
 		};
 	}
 	
@@ -562,7 +574,6 @@ async function checkAttestationsOfAddresses(addresses) {
 		attested_addresses.push(row.address);
 		assocAddressesToAttested[row.address] = true;
 	});
-	if (!attested_addresses.length) return [];
 	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [attested_addresses]);
 	return assocAddressesToAttested;
 }
