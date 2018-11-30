@@ -58,11 +58,7 @@ eventBus.once('headless_wallet_ready', () => {
 		if (validationUtils.isValidAddress(text)) {
 			let addressInfo = await getAddressInfo(text);
 			if (addressInfo) {
-				if(addressInfo.device_address === from_address){
-					return device.sendMessageToDevice(from_address, 'text', 'Address already added and is participating in the draw.');
-				} else {
-					device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
-				}
+				return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'Address already added and is participating in the draw.' : 'Address already registered by another user.');
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', pleaseSign(text));
 			}
@@ -84,8 +80,10 @@ eventBus.once('headless_wallet_ready', () => {
 				if (objSignedMessage.signed_message !== getTextToSign(address))
 					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
 						objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
-				if(await getAddressInfo(text))
-					return device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
+				let addressInfo = await getAddressInfo(text);
+				if (addressInfo) {
+					return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'Address already added and is participating in the draw.' : 'Address already registered by another user.');
+				}
 				await saveAddress(from_address, address);
 				if (userInfo.referrerCode) {
 					await setStep(from_address, 'done');
@@ -183,12 +181,9 @@ async function saveAddress(device_address, user_address) {
 		while ((await db.query("SELECT code FROM users WHERE code = ?", [code])).length) {
 			code = makeCode();
 		}
-		await db.query("INSERT INTO users (device_address, code) values (?,?)", [device_address, code]);
-		await db.query("INSERT INTO user_addresses (device_address, address) values (?,?)", [device_address, user_address]);
-	} else {
-		await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address) values (?,?)",
-			[device_address, user_address]);
+		await db.query("INSERT " + db.getIgnore() + " INTO users (device_address, code) values (?,?)", [device_address, code]);
 	}
+	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address) values (?,?)", [device_address, user_address]);
 }
 
 function getUserByCode(code) {

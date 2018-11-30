@@ -32,7 +32,7 @@ CREATE TABLE draws (
 	sum INT NOT NULL DEFAULT 0,
 	date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY (winner_address) REFERENCES user_addresses(address),
-    FOREIGN KEY (referrer_address) REFERENCES user_addresses(address)
+	FOREIGN KEY (referrer_address) REFERENCES user_addresses(address)
 );
 
 CREATE TABLE prev_balances (
