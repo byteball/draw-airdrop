@@ -21,7 +21,7 @@ function getTextToSign(address){
 }
 
 function getRulesText(){
-	return 
+	return
 		'\n➡ for real-name attested addresses, 1 point per GB of balance up to '+conf.balanceThreshold+' GB, '+conf.multiplierForAmountAboveThreshold+' point for each GB of additional balance over '+conf.balanceThreshold+' GB;\n' +
 		'\n➡ for unattested addresses, '+conf.multiplierForNonAttested+' point per GB of balance;\n' +
 		'\n➡ '+conf.multiplierForBalanceIncrease+' point per GB of balance increase over the previous draw;\n' +
@@ -45,7 +45,7 @@ eventBus.once('headless_wallet_ready', () => {
 		if (user) {
 			await setRefCode(from_address, pairing_secret);
 		}
-		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of "+(conf.rewardForWinnerInBytes/1e9)+" GB and "+(conf.rewardForWinnerInBlackbytes/1e9)+" GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on "+conf.drawDate+" and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules: "+getRulesText()+"\nIf you refer new users to this draw and one of them wins, you also win "+(conf.rewardForReferrerInBytes/1e9)+" GB and "+(conf.rewardForReferrerInBlackbytes/1e9)+" GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
+		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on " + conf.drawDate + " and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules: " + getRulesText() + "\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
 	});
 	
 	eventBus.on('text', async (from_address, text) => {
@@ -57,16 +57,14 @@ eventBus.once('headless_wallet_ready', () => {
 		
 		if (validationUtils.isValidAddress(text)) {
 			let addressInfo = await getAddressInfo(text);
-			if (addressInfo && addressInfo.device_address !== from_address) {
-				device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
-			} else {
-				if (addressInfo && addressInfo.signed === 1) {
+			if (addressInfo) {
+				if(addressInfo.device_address === from_address){
 					return device.sendMessageToDevice(from_address, 'text', 'Address already added and is participating in the draw.');
 				} else {
-					if (!addressInfo) await saveAddress(from_address, text);
-					await setStep(from_address, 'sign');
-					return device.sendMessageToDevice(from_address, 'text', 'Saved your address.\n\n' + pleaseSign(text));
+					device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
 				}
+			} else {
+				return device.sendMessageToDevice(from_address, 'text', pleaseSign(text));
 			}
 		} else if (arrSignedMessageMatches) {
 			let signedMessageBase64 = arrSignedMessageMatches[1];
@@ -86,9 +84,9 @@ eventBus.once('headless_wallet_ready', () => {
 				if (objSignedMessage.signed_message !== getTextToSign(address))
 					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
 						objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
-				if (!(await addressBelongsToUser(from_address, address)))
-					return device.sendMessageToDevice(from_address, 'text', "You signed the message with a wrong address: " + address);
-				await saveSigned(from_address, address);
+				if(await getAddressInfo(text))
+					return device.sendMessageToDevice(from_address, 'text', 'Address already registered by another user.');
+				await saveAddress(from_address, address);
 				if (userInfo.referrerCode) {
 					await setStep(from_address, 'done');
 					await showStatus(from_address);
@@ -104,11 +102,11 @@ eventBus.once('headless_wallet_ready', () => {
 			await setStep(from_address, 'done');
 			await showStatus(from_address);
 		} else if (text === 'ref') {
-			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1 AND signed = 1", [from_address]);
+			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1", [from_address]);
 			if (rows.length) {
 				const invite_code = device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.code;
-				const qr_url = conf.site+"/qr/?code="+ encodeURIComponent(invite_code);
-				return device.sendMessageToDevice(from_address, 'text', 'If you refer new users and one of them wins, you also win '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB. There are three ways to invite new users and ensure that the referrals are tracked to you:\n➡ have new users scan this QR code with wallet app '+qr_url+' which opens this bot in the user\'s wallet;\n➡ have new users copy-paste this to \"Chat > Add a new device > Accept invitation from the other device '+invite_code+' which opens this bot in the user\'s wallet;\n ➡ have new users start this bot from the Bot Store and enter your referrer code ' + userInfo.code + ' when the bot asks them about the referrer.');
+				const qr_url = conf.site + "/qr/?code=" + encodeURIComponent(invite_code);
+				return device.sendMessageToDevice(from_address, 'text', 'If you refer new users and one of them wins, you also win ' + (conf.rewardForReferrerInBytes / 1e9) + ' GB and ' + (conf.rewardForReferrerInBlackbytes / 1e9) + ' GBB. There are three ways to invite new users and ensure that the referrals are tracked to you:\n➡ have new users scan this QR code with wallet app ' + qr_url + ' which opens this bot in the user\'s wallet;\n➡ have new users copy-paste this to \"Chat > Add a new device > Accept invitation from the other device ' + invite_code + ' which opens this bot in the user\'s wallet;\n ➡ have new users start this bot from the Bot Store and enter your referrer code ' + userInfo.code + ' when the bot asks them about the referrer.');
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', 'To participate in the referral program you need to link at least one real-name attested address.  If you are not attested yet, find "Real name attestation bot" in the Bot Store and go through the attestation.  If you are already attested, switch to your attested wallet and [link its address](command:add new address).  The Draw Airdrop Bot will not know any of your personal details, it needs just the fact that you are attested.');
 			}
@@ -148,7 +146,9 @@ async function showStatus(device_address) {
 			'';
 		sum = sum.add(objPoints.points);
 	}
-	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\n\n' + text +
+	let totalPointsOfReferrals = await getPointsOfReferrals(userInfo.code);
+	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nTotal points of referrals: ' + totalPointsOfReferrals +
+		'\n\n' + text +
 		'\nChances to win are proportianal to the points you have. Current rules:\n' +
 		getRulesText() +
 		'\n\n[Add another address](command:add new address)' +
@@ -173,12 +173,7 @@ function getUserInfo(device_address) {
 }
 
 async function getAddresses(device_address) {
-	return await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND signed = 1", [device_address]);
-}
-
-async function addressBelongsToUser(device_address, address) {
-	let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND address = ?", [device_address, address]);
-	return !!rows.length;
+	return await db.query("SELECT * FROM user_addresses WHERE device_address = ?", [device_address]);
 }
 
 async function saveAddress(device_address, user_address) {
@@ -194,11 +189,6 @@ async function saveAddress(device_address, user_address) {
 		await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address) values (?,?)",
 			[device_address, user_address]);
 	}
-}
-
-async function saveSigned(device_address, address) {
-	await db.query("UPDATE user_addresses SET signed = 1 WHERE device_address = ? AND address = ?", [device_address, address]);
-	return true;
 }
 
 function getUserByCode(code) {
@@ -233,19 +223,39 @@ async function getAddressBalance(address) {
 	}
 }
 
+async function getPointsOfReferrals(code) {
+	let sum = new BigNumber(0);
+	let rows = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE referrerCode = ?", [code]);
+	let addresses = rows.map(row => row.address);
+	if (!addresses.length) return "0";
+	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
+				FROM outputs JOIN units USING(unit)\n\
+				WHERE is_spent=0 AND address IN(?) AND sequence='good' AND asset IS NULL\n\
+				GROUP BY address", [addresses]);
+	
+	for (let i = 0; i < rows1.length; i++) {
+		let row = rows1[i];
+		let points = (await calcPoints(row.balance, row.address)).total;
+		if (points.gt(0)) {
+			sum = sum.add(points);
+		}
+	}
+	return sum.toString();
+}
+
 setInterval(async () => {
 	if (moment() > moment(conf.drawDate, 'DD.MM.YYYY hh:mm')) {
 		updateNextRewardInConf();
 		let arrPoints = [];
 		let sum = new BigNumber(0);
-		let rows3 = await db.query("SELECT address FROM user_addresses WHERE signed = 1");
+		let rows3 = await db.query("SELECT address FROM user_addresses");
 		let assocAddressesToBalance = {};
 		rows3.forEach(row => {
 			assocAddressesToBalance[row.address] = 0;
 		});
 		let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 				FROM outputs JOIN units USING(unit)\n\
-				WHERE is_spent=0 AND address IN(SELECT address FROM user_addresses WHERE signed = 1) AND sequence='good' AND asset IS NULL\n\
+				WHERE is_spent=0 AND address IN(SELECT address FROM user_addresses) AND sequence='good' AND asset IS NULL\n\
 				GROUP BY address", []);
 		
 		for (let i = 0; i < rows1.length; i++) {
@@ -313,7 +323,7 @@ async function sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, 
 	rows.forEach(row => {
 		device.sendMessageToDevice(row.device_address, 'text', 'The winner of the draw #'+draw_id+' is ' + winner_address +
 			(winnerDeviceAddress === row.device_address ? ' (you)' : '') + ' and the winner receives a prize of '+(conf.rewardForWinnerInBytes/1e9)+' GB and '+(conf.rewardForWinnerInBlackbytes/1e9)+' GBB, congratulations to the winner!' +
-			(referrer_address !== null 
+			(referrer_address !== null
 			? '\n\nThe winner was referred by ' + referrer_address + (refDeviceAddress === row.device_address ? ' (you)' : '') + ' and the referrer receives a prize of '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB, congratulations to the winner\'s referrer!'
 			: '') +
 			'\n\nThe next draw is scheduled for '+conf.drawDate+'.  You can increase your chances to win by increasing the balance you linked or referring new users.  See the [details](command:status).'
@@ -394,7 +404,7 @@ function updateNextRewardInConf() {
 		json = {};
 	}
 	
-	conf.drawDate = moment(conf.drawDate, 'DD.MM.YYYY hh:mm').add(conf.drawInterval, 'days');
+	conf.drawDate = moment(conf.drawDate, 'DD.MM.YYYY hh:mm').add(conf.drawInterval, 'days').format('DD.MM.YYYY hh:mm');
 	json.drawDate = conf.drawDate;
 	fs.writeFile(userConfFile, JSON.stringify(json, null, '\t'), 'utf8', (err) => {
 		if (err)
@@ -403,7 +413,7 @@ function updateNextRewardInConf() {
 }
 
 async function calcPoints(balance, address) {
-	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ? AND signed = 1", [address]);
+	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ?", [address]);
 	if (!rows.length) return {
 		points: 0,
 		pointsForBalanceAboveThreshold: 0,
@@ -445,13 +455,13 @@ async function calcPoints(balance, address) {
 }
 
 async function getReferrerFromAddress(address) {
-	let rows = await db.query("SELECT referrerCode, attested FROM user_addresses JOIN users USING(device_address) WHERE address = ? AND signed = 1",
+	let rows = await db.query("SELECT referrerCode, attested FROM user_addresses JOIN users USING(device_address) WHERE address = ?",
 		[address]);
 	if (!rows.length || rows[0].attested === 0)
 		return null;
 	if (!rows[0].referrerCode)
 		return null;
-	let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE code = ? AND attested = 1 AND signed = 1",
+	let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE code = ? AND attested = 1",
 		[rows[0].referrerCode]);
 	return rows2.length ? rows2[0].address : null;
 }
@@ -490,17 +500,24 @@ app.use(async ctx => {
 
 async function getAddressesInfoForSite() {
 	let sum = new BigNumber(0);
-	let rows = await db.query("SELECT address, attested, referrerCode FROM user_addresses JOIN users USING(device_address) WHERE signed = 1");
+	let rows = await db.query("SELECT address, attested, referrerCode, device_address FROM user_addresses JOIN users USING(device_address)");
 	let objAddresses = {};
 	let addresses = [];
-	rows.forEach(row => {
+	for(let i = 0; i < rows.length; i++){
+		let row = rows[i];
 		addresses.push(row.address);
-		objAddresses[row.address] = {attested: row.attested, points: "0", referrerCode: row.referrerCode};
-	});
+		let userInfo = await getUserInfo(row.device_address);
+		objAddresses[row.address] = {
+			attested: row.attested,
+			points: "0",
+			referrerCode: row.referrerCode,
+			totalPointsOfReferrals: await getPointsOfReferrals(userInfo.code)
+		};
+	}
 	
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 			FROM outputs \n\
-			WHERE is_spent=0 AND address IN("+addresses.map(db.escape).join(', ')+")  AND asset IS NULL\n\
+			WHERE is_spent=0 AND address IN(" + addresses.map(db.escape).join(', ') + ")  AND asset IS NULL\n\
 			GROUP BY address ORDER BY balance DESC");
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
@@ -514,6 +531,7 @@ async function getAddressesInfoForSite() {
 
 async function checkAttestationsOfAddresses(addresses) {
 	let assocAddressesToAttested = {};
+	if (!addresses.length) return assocAddressesToAttested;
 	addresses.forEach(address => {
 		assocAddressesToAttested[address] = false;
 	});
