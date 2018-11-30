@@ -483,12 +483,12 @@ app.use(async ctx => {
 	let rows = await db.query("SELECT * FROM draws ORDER BY date DESC LIMIT 1");
 	let addressesInfo = await getAddressesInfoForSite();
 	if (rows.length) {
-		addressesInfo.nonDraws = false;
+		addressesInfo.hadPreviousDraw = true;
 		addressesInfo.winner_address = rows[0].winner_address;
 		addressesInfo.referrer_address = rows[0].referrer_address;
 		addressesInfo.lastSum = rows[0].sum;
 	} else {
-		addressesInfo.nonDraws = true;
+		addressesInfo.hadPreviousDraw = false;
 	}
 	await ctx.render('index', addressesInfo);
 });

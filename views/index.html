@@ -5,7 +5,7 @@
     <title>Reward</title>
 </head>
 <body>
-<% if(!nonDraws) {%>
+<% if(hadPreviousDraw) {%>
 <div>
     Last winner: <%= winner_address %><br>
     Last referrer: <%= referrer_address %><br>
