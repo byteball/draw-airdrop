@@ -31,15 +31,15 @@ exports.unitValue = 1000000000;
 
 exports.oracle = 'FOPUBEUPBC6YLIQDLKL6EW775BMV7YOH';
 
-exports.drawDate = '19.11.2018 13:38';
+exports.drawDate = '14.12.2018 12:00';
 exports.drawInterval = 7; // days
 
 exports.site = 'https://draw.byteball.org';
 
-exports.rewardForWinnerInBytes = 10;
-exports.rewardForReferrerInBytes = 5;
-exports.rewardForWinnerInBlackbytes = 50;
-exports.rewardForReferrerInBlackbytes = 50;
+exports.rewardForWinnerInBytes = 200e9;
+exports.rewardForReferrerInBytes = exports.rewardForWinnerInBytes/2;
+exports.rewardForWinnerInBlackbytes = exports.rewardForWinnerInBytes * 2.1111;
+exports.rewardForReferrerInBlackbytes = exports.rewardForReferrerInBytes * 2.1111;
 
 exports.payoutCheckInterval = 60000 * 10;
 
