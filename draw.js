@@ -270,8 +270,8 @@ setInterval(async () => {
 		let rows = await db.query("SELECT value FROM data_feeds CROSS JOIN units USING(unit) CROSS JOIN unit_authors USING(unit) \n\
 			WHERE address = ? AND +feed_name='bitcoin_hash' AND sequence='good' AND is_stable=1 ORDER BY data_feeds.rowid DESC LIMIT 1", [conf.oracle]);
 		
-		let value = rows[0].value;
-		let hash = crypto.createHash('sha256').update(value).digest('hex');
+		let bitcoin_hash = rows[0].value;
+		let hash = crypto.createHash('sha256').update(bitcoin_hash).digest('hex');
 		let number = new BigNumber(hash, 16);
 		let random = (number.div(new BigNumber(2).pow(256))).times(sum);
 		
@@ -293,7 +293,7 @@ setInterval(async () => {
 			refDeviceAddress = rows3[0].device_address;
 		}
 		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, winner_address, referrer_address, sum) VALUES (?,?,?,?)",
-			[value, winner_address, refAddress, sum.toNumber()]);
+			[bitcoin_hash, winner_address, refAddress, sum.toNumber()]);
 		let draw_id = insertMeta.insertId;
 		
 		await new Promise(resolve => {
