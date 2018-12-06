@@ -97,7 +97,7 @@ eventBus.once('headless_wallet_ready', () => {
 					return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'This address is already added and is participating in the draw.' : 'This address is already registered by another user.');
 				}
 				let attested = await saveAddress(from_address, address);
-				device.sendMessageToDevice(from_address, 'text', "Thanks, added your address.  "+(attested ? "The address is attested and will earn you the maximum number of points" : "The address is not attested and will earn you "+(conf.multiplierForNonAttested)+" points per GB of balance.  Have your real name attested to maximize your points and chances to win."));
+				device.sendMessageToDevice(from_address, 'text', "Thanks, added your address.  "+(attested ? "The address is attested and will earn you the maximum number of points." : "The address is not attested and will earn you "+(conf.multiplierForNonAttested)+" points per GB of balance.  Have your real name attested to maximize your points and chances to win."));
 				if (userInfo && userInfo.referrerCode) {
 					await setStep(from_address, 'done');
 					await showStatus(from_address, userInfo);
@@ -149,11 +149,11 @@ async function showStatus(device_address, userInfo) {
 		let objPoints = await calcPoints(await getAddressBalance(address), address);
 		text += address + '\n(' + (attested ? 'attested' : 'non-attested') + '), points: ' + objPoints.points + '\n' +
 			(objPoints.pointsForBalanceAboveThreshold.toNumber() > 0 ?
-				objPoints.pointsForBalanceAboveThreshold.toString() + ' points for balance above ' + conf.balanceThreshold + ' GB\n' : '') +
+				'\t' + objPoints.pointsForBalanceAboveThreshold.toString() + ' points for balance above ' + conf.balanceThreshold + ' GB\n' : '') +
 			(objPoints.pointsForBalanceBelowThreshold.toNumber() > 0 ?
-				objPoints.pointsForBalanceBelowThreshold.toString() + ' points for balance below ' + conf.balanceThreshold + ' GB\n' : '') +
+				'\t' + objPoints.pointsForBalanceBelowThreshold.toString() + ' points for balance below ' + conf.balanceThreshold + ' GB\n' : '') +
 			(objPoints.pointsForChange.toNumber() ?
-				objPoints.pointsForChange.toString() + ' points for balance change from the previous draw' : '') +
+				'\t' + objPoints.pointsForChange.toString() + ' points for balance change from the previous draw' : '') +
 			'';
 		sum = sum.add(objPoints.points);
 	}
