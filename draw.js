@@ -35,6 +35,7 @@ function getGreetingText(){
 }
 
 function sendGreeting(device_address){
+	const device = require('byteballcore/device.js');
 	device.sendMessageToDevice(device_address, 'text', getGreetingText());
 	assocReceivedGreeting[device_address] = true;
 }
@@ -51,7 +52,6 @@ eventBus.once('headless_wallet_ready', () => {
 	});
 	
 	eventBus.on('paired', async (from_address, pairing_secret) => {
-		const device = require('byteballcore/device.js');
 		let referring_user = await getUserByCode(pairing_secret);
 		if (referring_user) {
 			await createUser(from_address);
