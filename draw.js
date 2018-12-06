@@ -40,8 +40,9 @@ eventBus.once('headless_wallet_ready', () => {
 	
 	eventBus.on('paired', async (from_address, pairing_secret) => {
 		const device = require('byteballcore/device.js');
-		let user = await getUserByCode(pairing_secret);
-		if (user) {
+		let referring_user = await getUserByCode(pairing_secret);
+		if (referring_user) {
+			await createUser(from_address);
 			await setRefCode(from_address, pairing_secret);
 		}
 		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on " + conf.drawDate + " UTC and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules:\n" + getRulesText() + "\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
@@ -84,7 +85,7 @@ eventBus.once('headless_wallet_ready', () => {
 					return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'Address already added and is participating in the draw.' : 'Address already registered by another user.');
 				}
 				await saveAddress(from_address, address);
-				if (userInfo.referrerCode) {
+				if (userInfo && userInfo.referrerCode) {
 					await setStep(from_address, 'done');
 					await showStatus(from_address);
 				} else {
@@ -98,7 +99,7 @@ eventBus.once('headless_wallet_ready', () => {
 			await setRefCode(from_address, null);
 			await setStep(from_address, 'done');
 			await showStatus(from_address);
-		} else if (text === 'ref') {
+		} else if (userInfo && text === 'ref') {
 			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1", [from_address]);
 			if (rows.length) {
 				const invite_code = device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.code;
@@ -107,7 +108,7 @@ eventBus.once('headless_wallet_ready', () => {
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', 'To participate in the referral program you need to link at least one real-name attested address.  If you are not attested yet, find "Real name attestation bot" in the Bot Store and go through the attestation.  If you are already attested, switch to your attested wallet and [link its address](command:add new address).  The Draw Airdrop Bot will not know any of your personal details, it needs just the fact that you are attested.');
 			}
-		} else if (userInfo.step === 'ref') {
+		} else if (userInfo && userInfo.step === 'ref') {
 			if (userInfo.code === text) return device.sendMessageToDevice(from_address, 'text', 'You can\'t refer yourself');
 			let user = await getUserByCode(text);
 			if (user) {
@@ -175,15 +176,19 @@ async function getAddresses(device_address) {
 async function saveAddress(device_address, user_address) {
 	let rows = await db.query("SELECT device_address FROM users WHERE device_address = ?", [device_address]);
 	if (!rows.length) {
-		let code = makeCode();
-		while ((await db.query("SELECT code FROM users WHERE code = ?", [code])).length) {
-			code = makeCode();
-		}
-		await db.query("INSERT " + db.getIgnore() + " INTO users (device_address, code) VALUES (?,?)", [device_address, code]);
+		await createUser(device_address);
 	}
 	let att_rows = await db.query("SELECT 1 FROM attestations WHERE attestor_address IN(?) AND address=?", [conf.arrRealNameAttestors, user_address]);
 	let attested = (att_rows.length > 0) ? 1 : 0;
 	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address, attested) VALUES (?,?,?)", [device_address, user_address, attested]);
+}
+
+async function createUser(device_address){
+	let code = makeCode();
+	while ((await db.query("SELECT code FROM users WHERE code = ?", [code])).length) {
+		code = makeCode();
+	}
+	await db.query("INSERT " + db.getIgnore() + " INTO users (device_address, code) VALUES (?,?)", [device_address, code]);	
 }
 
 function getUserByCode(code) {
