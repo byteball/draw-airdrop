@@ -490,7 +490,7 @@ app.use(async ctx => {
 		addressesInfo.prev_referrer_address = prevDraw.referrer_address || 'none';
 		addressesInfo.prev_sum = prevDraw.sum;
 		addressesInfo.prev_bitcoin_hash = prevDraw.bitcoin_hash;
-		addressesInfo.prev_date = moment(prevDraw.date 'YYYY-MM-DD hh:mm:ss').format('DD.MM.YYYY hh:mm');
+		addressesInfo.prev_date = moment(prevDraw.date, 'YYYY-MM-DD hh:mm:ss').format('DD.MM.YYYY hh:mm');
 	} else {
 		addressesInfo.hadPreviousDraw = false;
 	}
