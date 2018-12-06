@@ -24,7 +24,7 @@ function getRulesText(){
 	return '➡ for real-name attested addresses, 1 point per GB of balance up to '+conf.balanceThreshold+' GB, '+conf.multiplierForAmountAboveThreshold+' point for each GB of additional balance over '+conf.balanceThreshold+' GB;\n' +
 		'➡ for unattested addresses, '+conf.multiplierForNonAttested+' point per GB of balance;\n' +
 		'➡ '+conf.multiplierForBalanceIncrease+' point per GB of balance increase over the previous draw;\n' +
-		'➡ -'+conf.multiplierForBalanceDecrease+' point per GB of balance decrease compared to the previous draw.\n';
+		'➡ -'+conf.multiplierForBalanceDecrease+' point per GB of balance decrease compared to the previous draw.';
 }
 
 let myAddress;
@@ -45,7 +45,7 @@ eventBus.once('headless_wallet_ready', () => {
 			await createUser(from_address);
 			await setRefCode(from_address, pairing_secret);
 		}
-		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on " + conf.drawDate + " UTC and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules:\n" + getRulesText() + "\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
+		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on " + conf.drawDate + " UTC and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
 	});
 	
 	eventBus.on('text', async (from_address, text) => {
@@ -58,7 +58,7 @@ eventBus.once('headless_wallet_ready', () => {
 		if (validationUtils.isValidAddress(text)) {
 			let addressInfo = await getAddressInfo(text);
 			if (addressInfo) {
-				return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'Address already added and is participating in the draw.' : 'Address already registered by another user.');
+				return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'This address is already added and is participating in the draw.' : 'This address is already registered by another user.');
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', pleaseSign(text));
 			}
@@ -82,7 +82,7 @@ eventBus.once('headless_wallet_ready', () => {
 						objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
 				let addressInfo = await getAddressInfo(text);
 				if (addressInfo) {
-					return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'Address already added and is participating in the draw.' : 'Address already registered by another user.');
+					return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'This address is already added and is participating in the draw.' : 'This address is already registered by another user.');
 				}
 				await saveAddress(from_address, address);
 				if (userInfo && userInfo.referrerCode) {
