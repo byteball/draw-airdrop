@@ -96,7 +96,8 @@ eventBus.once('headless_wallet_ready', () => {
 				if (addressInfo) {
 					return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'This address is already added and is participating in the draw.' : 'This address is already registered by another user.');
 				}
-				await saveAddress(from_address, address);
+				let attested = await saveAddress(from_address, address);
+				device.sendMessageToDevice(from_address, 'text', "Thanks, added your address.  "+(attested ? "The address is attested and will earn you the maximum number of points" : "The address is not attested and will earn you "+(conf.multiplierForNonAttested)+" points per GB of balance.  Have your real name attested to maximize your points and chances to win."));
 				if (userInfo && userInfo.referrerCode) {
 					await setStep(from_address, 'done');
 					await showStatus(from_address, userInfo);
@@ -194,6 +195,7 @@ async function saveAddress(device_address, user_address) {
 	let att_rows = await db.query("SELECT 1 FROM attestations WHERE attestor_address IN(?) AND address=?", [conf.arrRealNameAttestors, user_address]);
 	let attested = (att_rows.length > 0) ? 1 : 0;
 	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address, attested) VALUES (?,?,?)", [device_address, user_address, attested]);
+	return attested;
 }
 
 async function createUser(device_address){
