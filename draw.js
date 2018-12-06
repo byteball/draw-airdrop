@@ -17,6 +17,8 @@ const notifications = require('./notifications');
 
 BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
+let assocReceivedGreeting = {};
+
 function getTextToSign(address){
 	return "I confirm that I own the address "+address+" and want it to participate in the draw airdrop.";
 }
@@ -26,6 +28,15 @@ function getRulesText(){
 		'➡ for unattested addresses, '+conf.multiplierForNonAttested+' point per GB of balance;\n' +
 		'➡ '+conf.multiplierForBalanceIncrease+' point per GB of balance increase over the previous draw;\n' +
 		'➡ -'+conf.multiplierForBalanceDecrease+' point per GB of balance decrease compared to the previous draw.';
+}
+
+function getGreetingText(){
+	return "Welcome to our weekly airdrop!  Every week, we airdrop a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on " + conf.drawDate + " UTC and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.";
+}
+
+function sendGreeting(device_address){
+	device.sendMessageToDevice(device_address, 'text', getGreetingText());
+	assocReceivedGreeting[device_address] = true;
 }
 
 let myAddress;
@@ -46,7 +57,7 @@ eventBus.once('headless_wallet_ready', () => {
 			await createUser(from_address);
 			await setRefCode(from_address, pairing_secret);
 		}
-		device.sendMessageToDevice(from_address, 'text', "Welcome to our weekly airdrop!  Every week, we airdrop a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on " + conf.drawDate + " UTC and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.");
+		sendGreeting(from_address);
 	});
 	
 	eventBus.on('text', async (from_address, text) => {
@@ -94,6 +105,8 @@ eventBus.once('headless_wallet_ready', () => {
 					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
 				}
 			});
+		} else if ((!userInfo || !addressesRows.length) && !assocReceivedGreeting[from_address]) {
+			return sendGreeting(from_address);
 		} else if (!userInfo || !addressesRows.length || text === 'add new address') {
 			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address.');
 		} else if (userInfo && text === 'skip ref') {
@@ -144,7 +157,7 @@ async function showStatus(device_address, userInfo) {
 		sum = sum.add(objPoints.points);
 	}
 	let totalPointsOfReferrals = await getPointsOfReferrals(userInfo.code);
-	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nTotal points of referrals: ' + totalPointsOfReferrals +
+	device.sendMessageToDevice(device_address, 'text', 'Your points: ' + sum.toString() + '\nTotal points of your referrals: ' + totalPointsOfReferrals +
 		'\n\nLinked addresses:\n' + text +
 		'\nChances to win are proportianal to the points you have. Current rules:\n' +
 		getRulesText() +
