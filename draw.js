@@ -266,6 +266,8 @@ setInterval(async () => {
 				sum = sum.add(points);
 			}
 		}
+		if (sum.eq(new BigNumber(0)))
+			return;
 		
 		let rows = await db.query("SELECT value FROM data_feeds CROSS JOIN units USING(unit) CROSS JOIN unit_authors USING(unit) \n\
 			WHERE address = ? AND +feed_name='bitcoin_hash' AND sequence='good' AND is_stable=1 ORDER BY data_feeds.rowid DESC LIMIT 1", [conf.oracle]);
@@ -413,12 +415,8 @@ function updateNextRewardInConf() {
 
 async function calcPoints(balance, address) {
 	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ?", [address]);
-	if (!rows.length) return {
-		points: 0,
-		pointsForBalanceAboveThreshold: 0,
-		pointsForBalanceBelowThreshold: 0,
-		pointsForChange: 0
-	};
+	if (!rows.length)
+		throw Error("address "+address+" not found");
 	
 	let bnBalance = new BigNumber(balance).div(conf.unitValue);
 	let bnThreshold = new BigNumber(conf.balanceThreshold);
