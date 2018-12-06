@@ -213,11 +213,11 @@ function setRefCode(device_address, code) {
 
 async function getAddressBalance(address) {
 	let rows = await db.query(
-		"SELECT asset, is_stable, SUM(amount) AS balance \n\
+		"SELECT SUM(amount) AS balance \n\
 		FROM outputs JOIN units USING(unit) \n\
-		WHERE is_spent=0 AND address=? AND sequence='good' AND asset IS NULL AND is_stable = 1", [address]);
+		WHERE is_spent=0 AND address=? AND sequence='good' AND asset IS NULL", [address]);
 	if (rows.length) {
-		return rows[0].balance;
+		return (rows[0].balance || 0);
 	} else {
 		return 0;
 	}
