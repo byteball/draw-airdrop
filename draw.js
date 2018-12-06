@@ -13,6 +13,7 @@ const desktopApp = require('byteballcore/desktop_app.js');
 const async = require('async');
 const fs = require('fs');
 const mutex = require('byteballcore/mutex');
+const notifications = require('./notifications');
 
 BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
@@ -350,6 +351,7 @@ function pay(draw_id) {
 				await db.query("UPDATE draws SET paid_bytes = 1, paid_bytes_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
 			} catch (e) {
 				console.error('Error payBytes: ', e);
+				notifications.notifyAdmin('payBytes failed', e.toString());
 			}
 		}
 		
@@ -359,6 +361,7 @@ function pay(draw_id) {
 				await db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE draw_id = ?", [result2.unit, draw_id]);
 			} catch (e) {
 				console.error('Error payBlackbytesToWinner: ', e);
+				notifications.notifyAdmin('payBlackbytesToWinner failed', e.toString());
 			}
 		}
 		
@@ -368,6 +371,7 @@ function pay(draw_id) {
 				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE draw_id = ?", [result3.unit, draw_id]);
 			}catch (e) {
 				console.error('Error payBlackbytesToReferrer: ', e);
+				notifications.notifyAdmin('payBlackbytesToReferrer failed', e.toString());
 			}
 		}
 		unlock();
