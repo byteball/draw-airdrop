@@ -87,7 +87,7 @@ eventBus.once('headless_wallet_ready', () => {
 				await saveAddress(from_address, address);
 				if (userInfo && userInfo.referrerCode) {
 					await setStep(from_address, 'done');
-					await showStatus(from_address);
+					await showStatus(from_address, userInfo);
 				} else {
 					await setStep(from_address, 'ref');
 					device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
@@ -95,10 +95,10 @@ eventBus.once('headless_wallet_ready', () => {
 			});
 		} else if (!userInfo || !addressesRows.length || text === 'add new address') {
 			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address.');
-		} else if (text === 'skip ref') {
+		} else if (userInfo && text === 'skip ref') {
 			await setRefCode(from_address, null);
 			await setStep(from_address, 'done');
-			await showStatus(from_address);
+			await showStatus(from_address, userInfo);
 		} else if (userInfo && text === 'ref') {
 			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1", [from_address]);
 			if (rows.length) {
@@ -113,20 +113,19 @@ eventBus.once('headless_wallet_ready', () => {
 			let user = await getUserByCode(text);
 			if (user) {
 				await setRefCode(from_address, text);
-				await showStatus(from_address);
+				await showStatus(from_address, userInfo);
 			} else {
 				device.sendMessageToDevice(from_address, 'text', 'Please send a valid referrer code or [skip](command:skip ref)');
 			}
-		} else {
-			await showStatus(from_address);
+		} else if (userInfo) {
+			await showStatus(from_address, userInfo);
 		}
 	});
 });
 
-async function showStatus(device_address) {
+async function showStatus(device_address, userInfo) {
 	const device = require('byteballcore/device');
 	let addressesRows = await getAddresses(device_address);
-	let addresses = addressesRows.map(row => row.address);
 	let sum = new BigNumber(0);
 	let text = '';
 	for (let i = 0; i < addressesRows.length; i++) {
@@ -145,7 +144,7 @@ async function showStatus(device_address) {
 	}
 	let totalPointsOfReferrals = await getPointsOfReferrals(userInfo.code);
 	device.sendMessageToDevice(device_address, 'text', 'Total points: ' + sum.toString() + '\nTotal points of referrals: ' + totalPointsOfReferrals +
-		'\n\n' + text +
+		'\n\nLinked addresses:\n' + text +
 		'\nChances to win are proportianal to the points you have. Current rules:\n' +
 		getRulesText() +
 		'\n\n[Add another address](command:add new address)' +
