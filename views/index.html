@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Draw Airdrop</title>
+	<meta charset="UTF-8">
+	<title>Draw Airdrop</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
 	<style>
+		body {margin: 10px}
+		table, tr, td, th {border: 1px solid gray}
+		th {text-align: center}
+		td, th {padding: 4px}
+		tr:nth-of-type(odd) {background-color:#eee}
 		.center {text-align: center}
 		.right {text-align: right}
 	</style>
@@ -13,34 +19,34 @@
 <% if(hadPreviousDraw) {%>
 <div>
 	<h2>Results of the previous draw on <%= prev_date %></h2>
-    Winner: <%= prev_winner_address %><br>
-    Winner's referrer: <%= prev_referrer_address %><br>
-    Total points: <%= prev_sum %><br>
-    Bitcoin hash as source of randomness: <%= prev_bitcoin_hash %><br><br>
+	Winner: <%= prev_winner_address %><br>
+	Winner's referrer: <%= prev_referrer_address %><br>
+	Total points: <%= prev_sum %><br>
+	Bitcoin hash as source of randomness: <%= prev_bitcoin_hash %><br><br>
 </div>
 <% } %>
 <table>
-    <tr>
-        <th>Address</th>
-        <th>Balance</th>
-        <th>Points</th>
-        <th>Attested</th>
-        <th>Referrer</th>
-        <th>Total points of referrals</th>
-    </tr>
-    <% for(var k in objAddresses) {%>
-    <tr>
-        <td><a href="https://explorer.byteball.org/#<%= k %>" target="_blank"><%= k %></a></td>
-        <td class="right"><%= objAddresses[k].balance %></td>
-        <td class="right"><%= objAddresses[k].points %></td>
-        <td class="center"><%= objAddresses[k].attested %></td>
-        <td><%= objAddresses[k].referrerCode %></td>
-        <td class="right"><%= objAddresses[k].totalPointsOfReferrals %></td>
-    </tr>
-    <% } %>
+	<tr>
+		<th>Address</th>
+		<th>Balance</th>
+		<th>Points</th>
+		<th>Attested</th>
+		<th>Referrer</th>
+		<th>Total points of referrals</th>
+	</tr>
+	<% for(var k in objAddresses) {%>
+	<tr>
+		<td><a href="https://explorer.byteball.org/#<%= k %>" target="_blank"><%= k %></a></td>
+		<td class="right"><%= objAddresses[k].balance %></td>
+		<td class="right"><%= objAddresses[k].points %></td>
+		<td class="center"><%= objAddresses[k].attested %></td>
+		<td><%= objAddresses[k].referrerCode %></td>
+		<td class="right"><%= objAddresses[k].totalPointsOfReferrals %></td>
+	</tr>
+	<% } %>
 </table>
 <br>
-Total balance: <%= total_balance %> GB
+Total balance: <%= total_balance %> GB<br>
 Total points: <%= sum %>
 </body>
 </html>
