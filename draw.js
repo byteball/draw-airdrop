@@ -24,14 +24,14 @@ function getTextToSign(address){
 }
 
 function getRulesText(){
-	return '➡ for real-name attested addresses, 1 point per GB of balance up to '+conf.balanceThreshold+' GB, '+conf.multiplierForAmountAboveThreshold+' point for each GB of additional balance over '+conf.balanceThreshold+' GB;\n' +
-		'➡ for unattested addresses, '+conf.multiplierForNonAttested+' point per GB of balance;\n' +
-		'➡ '+conf.multiplierForBalanceIncrease+' point per GB of balance increase over the previous draw;\n' +
-		'➡ -'+conf.multiplierForBalanceDecrease+' point per GB of balance decrease compared to the previous draw.';
+	return '➡ Real-name attested addresses get 1 point per GB of balance up to '+conf.balanceThreshold+' GB and additionally '+conf.multiplierForAmountAboveThreshold+' point for each GB above that.\n' +
+		'➡ For unattested addresses, '+conf.multiplierForNonAttested+' point per GB of balance.\n' +
+		'➡ '+conf.multiplierForBalanceIncrease+' point is awarded for each GB of balance increase since the previous draw.\n' +
+		'➡ '+conf.multiplierForBalanceDecrease+' point is deducted for each GB of balance decrease since the previous draw.';
 }
 
 function getGreetingText(){
-	return "Welcome to our weekly airdrop!  Every week, we airdrop a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB to a single winner, and you have a chance to win.  It is like a lottery but you don't need to pay anything, just prove your existing balance.\n\nYour chances to win depend on the balances of the addresses you link here, the larger the balances, the more points you get.  The winner of the current draw will be selected randomly on " + conf.drawDate + " UTC and your chance to be selected depends on the points you have on that date: more points, higher chance.\n\nThe rules are designed in favor of smaller participants, larger balances add little to the points.  To get most points, you'll need to pass real name attestation and prove your real name (find \"Real name attestation bot\" in the Bot Store), the draw bot doesn't see your personal details, it needs just the fact that you are attested.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB, the instructions will be shown after you link your own address.\n\nPlease send me your address you want to link to the draw.";
+	return "Welcome to our weekly airdrop!  Every week, a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB is airdropped to a single winner.  This could be you!  It is like a lottery but you don't have to buy lottery tickets - just prove your existing balance.\n\nYour chance to win depends on the balances of the addresses you link here - the larger the balances, the more points you get.  The winner of the current draw will be selected in a proven random way on " + conf.drawDate + " UTC. The more points you have on this date, the higher your chance of winning.\n\nThe rules are designed in favor of smaller participants.  Balances of more than "+conf.balanceThreshold+" GB add less points than balances of less than "+conf.balanceThreshold+" GB.  To get more points, you may pass a real name attestation - find \"Real name attestation bot\" in the Bot Store. The draw bot won't see your personal details, only the fact that you are attested.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB.  Instructions will be shown after you link your own address.\n\nPlease send me the address of your wallet you want to enter in the weekly draw (click '...' and 'Insert my address').";
 }
 
 function sendGreeting(device_address){

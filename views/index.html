@@ -15,10 +15,10 @@
 	</style>
 </head>
 <body>
-<h1>Next Draw: <%= drawDate %></h1>
+<h1>Next Draw: <%= drawDate %> UTC</h1>
 <% if(hadPreviousDraw) {%>
 <div>
-	<h2>Results of the previous draw on <%= prev_date %></h2>
+	<h2>Results of the previous draw on <%= prev_date %> UTC</h2>
 	Winner: <%= prev_winner_address %><br>
 	Winner's referrer: <%= prev_referrer_address %><br>
 	Total points: <%= prev_sum %><br>

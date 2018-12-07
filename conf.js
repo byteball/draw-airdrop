@@ -34,7 +34,7 @@ exports.oracle = 'FOPUBEUPBC6YLIQDLKL6EW775BMV7YOH';
 exports.drawDate = '14.12.2018 12:00';
 exports.drawInterval = 7; // days
 
-exports.site = 'https://draw.byteball.org';
+exports.site = 'http://draw.byteball.org';
 
 exports.rewardForWinnerInBytes = 200e9;
 exports.rewardForReferrerInBytes = exports.rewardForWinnerInBytes/2;
