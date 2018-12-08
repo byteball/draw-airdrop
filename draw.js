@@ -129,6 +129,9 @@ eventBus.once('headless_wallet_ready', () => {
 			if (user) {
 				await setRefCode(from_address, text);
 				await showStatus(from_address, userInfo);
+				// notify the referrer
+				let total_user_balance = await getUserBalance(from_address);
+				device.sendMessageToDevice(user.device_address, 'text', 'A new user with balance '+(total_user_balance/1e9)+' GB has just joined the draw under your referral code.');
 			} else {
 				device.sendMessageToDevice(from_address, 'text', 'Please send a valid referrer code or [skip](command:skip ref)');
 			}
@@ -231,6 +234,18 @@ async function getAddressBalance(address) {
 		"SELECT SUM(amount) AS balance \n\
 		FROM outputs JOIN units USING(unit) \n\
 		WHERE is_spent=0 AND address=? AND sequence='good' AND asset IS NULL", [address]);
+	if (rows.length) {
+		return (rows[0].balance || 0);
+	} else {
+		return 0;
+	}
+}
+
+async function getUserBalance(device_address) {
+	let rows = await db.query(
+		"SELECT SUM(amount) AS balance \n\
+		FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit) \n\
+		WHERE device_address=? AND is_spent=0 AND address=? AND sequence='good' AND asset IS NULL", [device_address]);
 	if (rows.length) {
 		return (rows[0].balance || 0);
 	} else {
