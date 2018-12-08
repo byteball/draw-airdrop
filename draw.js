@@ -473,10 +473,14 @@ async function calcPoints(balance, address) {
 async function getReferrerFromAddress(address) {
 	let rows = await db.query("SELECT referrerCode, attested FROM user_addresses JOIN users USING(device_address) WHERE address = ?",
 		[address]);
-	if (!rows.length || rows[0].attested === 0)
-		return null;
+	if (rows.length === 0)
+		throw Error("address "+address+" not found");
 	if (!rows[0].referrerCode)
 		return null;
+	if (rows[0].attested === 0){
+		notifications.notifyAdmin("referral not attested", "referral "+address+" is not attested");
+	//	return null;
+	}
 	let rows2 = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE code = ? AND attested = 1",
 		[rows[0].referrerCode]);
 	return rows2.length ? rows2[0].address : null;
