@@ -48,6 +48,11 @@
 </table>
 <br>
 Total balance: <%= total_balance %> GB<br>
-Total points: <%= sum %>
+Total points: <%= sum %><br>
+<br>
+<!--
+GINI coefficient for balance (excluding balances below <%= dust_threshold %> GB) <%= balance_gini %><br>
+GINI coefficient for points (excluding values below <%= dust_threshold %>) <%= points_gini %><br>
+-->
 </body>
 </html>

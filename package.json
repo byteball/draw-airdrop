@@ -9,6 +9,7 @@
 	"dependencies": {
 		"byteballcore": "git+https://github.com/byteball/byteballcore.git",
 		"ejs": "2.6.1",
+		"gini": "^1.1.7",
 		"headless-byteball": "git+https://github.com/byteball/headless-byteball.git",
 		"koa": "2.6.2",
 		"koa-views": "6.1.4",

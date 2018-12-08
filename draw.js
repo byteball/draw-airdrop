@@ -14,6 +14,9 @@ const async = require('async');
 const fs = require('fs');
 const mutex = require('byteballcore/mutex');
 const notifications = require('./notifications');
+const gini = require("gini");
+
+const dust_threshold = 0.1; // for GINI coefficients
 
 BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
@@ -549,13 +552,15 @@ async function getAddressesInfoForSite() {
 		let userInfo = await getUserInfo(row.device_address);
 		objAddresses[row.address] = {
 			attested: row.attested,
-			points: "0",
+			points: new BigNumber(0),
 			balance: 0,
 			referrerCode: row.referrerCode,
 			totalPointsOfReferrals: await getPointsOfReferrals(userInfo.code)
 		};
 	}
 	
+	let arrPoints = [];
+	let arrBalances = [];
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 			FROM outputs \n\
 			WHERE is_spent=0 AND address IN(" + addresses.map(db.escape).join(', ') + ")  AND asset IS NULL\n\
@@ -563,13 +568,21 @@ async function getAddressesInfoForSite() {
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
 		let points = (await calcPoints(row.balance, row.address)).points;
+		let nPoints = points.toNumber();
 		objAddresses[row.address].points = points.toString();
-		objAddresses[row.address].balance = row.balance / 1e9;
+		let gb_balance = row.balance / 1e9;
+		objAddresses[row.address].balance = gb_balance;
 		sum = sum.add(points);
 		total_balance += row.balance;
+		if (gb_balance > dust_threshold)
+			arrBalances.push(gb_balance);
+		if (nPoints > dust_threshold)
+			arrPoints.push(nPoints);
 	}
 	sum = sum.toString();
-	return {objAddresses, sum, total_balance: total_balance / 1e9};
+	let balance_gini = gini.ordered(arrBalances.sort((a, b) => a - b));
+	let points_gini = gini.ordered(arrPoints.sort((a, b) => a - b));
+	return {objAddresses, sum, total_balance: total_balance / 1e9, balance_gini, points_gini, dust_threshold};
 }
 
 async function updateNewAttestations() {
