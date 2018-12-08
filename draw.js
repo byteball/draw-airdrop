@@ -245,7 +245,7 @@ async function getUserBalance(device_address) {
 	let rows = await db.query(
 		"SELECT SUM(amount) AS balance \n\
 		FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit) \n\
-		WHERE device_address=? AND is_spent=0 AND address=? AND sequence='good' AND asset IS NULL", [device_address]);
+		WHERE device_address=? AND is_spent=0 AND sequence='good' AND asset IS NULL", [device_address]);
 	if (rows.length) {
 		return (rows[0].balance || 0);
 	} else {
