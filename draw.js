@@ -265,7 +265,7 @@ async function getPointsOfReferrals(code) {
 	
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
-		let points = (await calcPoints(row.balance, row.address)).total;
+		let points = (await calcPoints(row.balance, row.address)).points;
 		if (points.gt(0)) {
 			sum = sum.add(points);
 		}
