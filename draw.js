@@ -555,7 +555,7 @@ async function getAddressesInfoForSite() {
 			points: new BigNumber(0),
 			balance: 0,
 			referrerCode: row.referrerCode,
-			totalPointsOfReferrals: await getPointsOfReferrals(userInfo.code)
+			totalPointsOfReferrals: row.attested ? (await getPointsOfReferrals(userInfo.code)) : 0
 		};
 	}
 	
