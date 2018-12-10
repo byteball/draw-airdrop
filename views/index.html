@@ -51,8 +51,9 @@ Total balance: <%= total_balance %> GB<br>
 Total points: <%= sum %><br>
 <br>
 <!--
-GINI coefficient for balance (excluding balances below <%= dust_threshold %> GB) <%= balance_gini %><br>
-GINI coefficient for points (excluding values below <%= dust_threshold %>) <%= points_gini %><br>
+Gini coefficient for balance (excluding balances below <%= dust_threshold %> GB) <%= balance_gini %><br>
+Gini coefficient for points (excluding values below <%= dust_threshold %>) <%= points_gini %><br>
+Whale dominance: <%= whale_dominance %>% (defined as % of points owned by addresses with balance over <%= whale_threshold %> GB)<br>
 -->
 </body>
 </html>

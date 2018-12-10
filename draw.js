@@ -16,7 +16,8 @@ const mutex = require('byteballcore/mutex');
 const notifications = require('./notifications');
 const gini = require("gini");
 
-const dust_threshold = 0.1; // for GINI coefficients
+const dust_threshold = 0.1; // for Gini coefficients
+const whale_threshold = 500;
 
 BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
@@ -561,6 +562,7 @@ async function getAddressesInfoForSite() {
 	
 	let arrPoints = [];
 	let arrBalances = [];
+	let whale_sum = new BigNumber(0);
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 			FROM outputs \n\
 			WHERE is_spent=0 AND address IN(" + addresses.map(db.escape).join(', ') + ")  AND asset IS NULL\n\
@@ -578,11 +580,14 @@ async function getAddressesInfoForSite() {
 			arrBalances.push(gb_balance);
 		if (nPoints > dust_threshold)
 			arrPoints.push(nPoints);
+		if (gb_balance > whale_threshold)
+			whale_sum = whale_sum.add(points);
 	}
 	sum = sum.toString();
 	let balance_gini = gini.ordered(arrBalances.sort((a, b) => a - b));
 	let points_gini = gini.ordered(arrPoints.sort((a, b) => a - b));
-	return {objAddresses, sum, total_balance: total_balance / 1e9, balance_gini, points_gini, dust_threshold};
+	let whale_dominance = whale_sum.div(sum).times(new BigNumber(100));
+	return {objAddresses, sum, total_balance: total_balance / 1e9, balance_gini, points_gini, dust_threshold, whale_dominance, whale_threshold};
 }
 
 async function updateNewAttestations() {
