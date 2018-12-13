@@ -583,6 +583,16 @@ app.use(views(__dirname + '/views', {
 	}
 }));
 
+app.use(async (ctx, next) => {
+	try {
+		await next();
+	} catch (err) {
+		console.error(new Error(err));
+		notifications.notifyAdmin('Error in koa', err.toString());
+		process.exit(0);
+	}
+});
+
 app.use(async ctx => {
 	let rows = await db.query("SELECT * FROM draws ORDER BY date DESC LIMIT 1");
 	let addressesInfo = await getAddressesInfoForSite();
