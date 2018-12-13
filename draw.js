@@ -22,6 +22,7 @@ const whale_threshold = 500;
 BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
 let assocReceivedGreeting = {};
+let assocPrevBalances = {};
 
 function getTextToSign(address){
 	return "I confirm that I own the address "+address+" and want it to participate in the draw airdrop.";
@@ -347,6 +348,7 @@ setInterval(async () => {
 				});
 			});
 		});
+		assocPrevBalances = {};
 		pay(draw_id);
 		await sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, winner_address, refAddress);
 	}
@@ -473,9 +475,8 @@ async function calcPoints(balance, address, attested) {
 	} else {
 		points = bnBalance.times(conf.multiplierForNonAttested);
 	}
-	let rows2 = await db.query("SELECT balance FROM prev_balances WHERE address = ? AND draw_id=(SELECT draw_id FROM draws ORDER BY draw_id DESC LIMIT 1)", [address]);
-	if (rows2.length) {
-		let prev_balance = rows2[0].balance;
+	let prev_balance = await getPrevBalance(address);
+	if (prev_balance !== null) {
 		let deltaInGB = bnBalance.minus(new BigNumber(prev_balance).div(conf.unitValue));
 		if (balance > prev_balance) {
 			pointsForChange = deltaInGB.times(conf.multiplierForBalanceIncrease);
@@ -486,6 +487,14 @@ async function calcPoints(balance, address, attested) {
 		}
 	}
 	return {points: points, pointsForBalanceAboveThreshold, pointsForBalanceBelowThreshold, pointsForChange};
+}
+
+async function getPrevBalance(address){
+	if (assocPrevBalances[address] !== undefined)
+		return assocPrevBalances[address];
+	let rows = await db.query("SELECT balance FROM prev_balances WHERE address = ? AND draw_id=(SELECT draw_id FROM draws ORDER BY draw_id DESC LIMIT 1)", [address]);
+	assocPrevBalances[address] = rows.length ? rows[0].balance : null;
+	return assocPrevBalances[address];
 }
 
 async function getReferrerFromAddress(address) {
