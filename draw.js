@@ -680,7 +680,7 @@ eventBus.on('new_my_transactions', async (arrUnits) => {
 	let rows = await db.query(
 		"SELECT address FROM unit_authors CROSS JOIN user_addresses USING(address) WHERE unit IN(?) \n\
 		UNION \n\
-		SELECT address FROM outputs CROSS JOIN user_addresses USING(address) WHERE unit IN(?) AND asset IS NULL"
+		SELECT address FROM outputs CROSS JOIN user_addresses USING(address) WHERE unit IN(?) AND asset IS NULL",
 		[arrUnits, arrUnits]);
 	// reset cache of affected addresses
 	rows.forEach(row => {
