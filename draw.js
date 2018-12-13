@@ -23,6 +23,10 @@ BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
 let assocReceivedGreeting = {};
 let assocPrevBalances = {};
+let assocReferralsByCode = {};
+let assocAddressesByDevice = {};
+let assocAttestedByAddress = {};
+let assocBalances = {};
 
 function getTextToSign(address){
 	return "I confirm that I own the address "+address+" and want it to participate in the draw airdrop.";
@@ -47,13 +51,34 @@ function sendGreeting(device_address){
 
 let myAddress;
 
-eventBus.once('headless_wallet_ready', () => {
+eventBus.once('headless_wallet_ready', async () => {
+	const network = require('byteballcore/network.js');
 	headlessWallet.setupChatEventHandlers();
 	
 	db.query("SELECT address FROM my_addresses", [], function (rows) {
 		if (rows.length === 0)
 			throw Error("no addresses");
 		myAddress = rows[0].address;
+	});
+	
+	let rows = await db.query("SELECT device_address, referrerCode FROM users WHERE referrerCode IS NOT NULL");
+	rows.forEach(row => {
+		if (!assocReferralsByCode[row.referrerCode])
+			assocReferralsByCode[row.referrerCode] = [];
+		assocReferralsByCode[row.referrerCode].push(row.device_address);
+	});
+	
+	rows = await db.query("SELECT device_address, address FROM user_addresses");
+	rows.forEach(row => {
+		if (!assocAddressesByDevice[row.device_address])
+			assocAddressesByDevice[row.device_address] = [];
+		assocAddressesByDevice[row.device_address].push(row.address);
+	});
+	network.setWatchedAddresses(rows.map(row => row.address));
+	
+	rows = await db.query("SELECT attested, address FROM user_addresses WHERE attested=1");
+	rows.forEach(row => {
+		assocAttestedByAddress[row.address] = row.attested;
 	});
 	
 	eventBus.on('paired', async (from_address, pairing_secret) => {
@@ -97,7 +122,7 @@ eventBus.once('headless_wallet_ready', () => {
 				if (objSignedMessage.signed_message !== getTextToSign(address))
 					return device.sendMessageToDevice(from_address, 'text', "You signed a wrong message: " +
 						objSignedMessage.signed_message + ", expected: " + getTextToSign(address));
-				let addressInfo = await getAddressInfo(text);
+				let addressInfo = await getAddressInfo(address);
 				if (addressInfo) {
 					return device.sendMessageToDevice(from_address, 'text', (addressInfo.device_address === from_address) ? 'This address is already added and is participating in the draw.' : 'This address is already registered by another user.');
 				}
@@ -203,6 +228,14 @@ async function saveAddress(device_address, user_address) {
 	let att_rows = await db.query("SELECT 1 FROM attestations WHERE attestor_address IN(?) AND address=?", [conf.arrRealNameAttestors, user_address]);
 	let attested = (att_rows.length > 0) ? 1 : 0;
 	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address, attested) VALUES (?,?,?)", [device_address, user_address, attested]);
+	
+	if (!assocAddressesByDevice[device_address])
+		assocAddressesByDevice[device_address] = [];
+	assocAddressesByDevice[device_address].push(user_address);
+	assocAttestedByAddress[user_address] = attested;
+	const network = require('byteballcore/network');
+	network.addWatchedAddress(user_address);
+	
 	return attested;
 }
 
@@ -227,6 +260,11 @@ function getUserByCode(code) {
 }
 
 function setRefCode(device_address, code) {
+	if (code){
+		if (!assocReferralsByCode[code])
+			assocReferralsByCode[code] = [];
+		assocReferralsByCode[code].push(device_address);
+	}
 	return new Promise(resolve => {
 		db.query("UPDATE users SET referrerCode = ? WHERE device_address = ?", [code, device_address], () => {
 			return resolve();
@@ -235,15 +273,14 @@ function setRefCode(device_address, code) {
 }
 
 async function getAddressBalance(address) {
+	if (assocBalances[address] !== undefined)
+		return assocBalances[address];
 	let rows = await db.query(
 		"SELECT SUM(amount) AS balance \n\
 		FROM outputs JOIN units USING(unit) \n\
 		WHERE is_spent=0 AND address=? AND sequence='good' AND asset IS NULL", [address]);
-	if (rows.length) {
-		return (rows[0].balance || 0);
-	} else {
-		return 0;
-	}
+	assocBalances[address] = rows.length ? (rows[0].balance || 0) : 0;
+	return assocBalances[address];
 }
 
 async function getUserBalance(device_address) {
@@ -259,8 +296,22 @@ async function getUserBalance(device_address) {
 }
 
 async function getPointsOfReferrals(code) {
+	let arrReferredDevices = assocReferralsByCode[code];
+	if (!arrReferredDevices)
+		return "0";
 	let sum = new BigNumber(0);
-	let rows = await db.query(
+	for (let j=0; j<arrReferredDevices.length; j++){
+		let device_address = arrReferredDevices[j];
+		let arrAddresses = assocAddressesByDevice[device_address];
+		for (let i=0; i<arrAddresses.length; i++){
+			let address = arrAddresses[i];
+			let balance = await getAddressBalance(address);
+			let points = (await calcPoints(balance, address, assocAttestedByAddress[address])).points;
+			if (points.gt(0))
+				sum = sum.add(points);
+		}
+	}
+/*	let rows = await db.query(
 		"SELECT address, attested, SUM(amount) AS balance \n\
 		FROM users CROSS JOIN user_addresses USING(device_address) CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
 		WHERE referrerCode = ? AND is_spent=0 AND sequence='good' AND asset IS NULL \n\
@@ -272,7 +323,7 @@ async function getPointsOfReferrals(code) {
 		if (points.gt(0)) {
 			sum = sum.add(points);
 		}
-	}
+	}*/
 	return sum.toString();
 }
 
@@ -280,6 +331,7 @@ setInterval(async () => {
 	if (moment() > moment(conf.drawDate, 'DD.MM.YYYY hh:mm')) {
 		updateNextRewardInConf();
 		await updateNewAttestations();
+		assocBalances = {}; // reset the cache
 		let arrPoints = [];
 		let sum = new BigNumber(0);
 		let rows3 = await db.query("SELECT address FROM user_addresses");
@@ -552,19 +604,18 @@ app.use(async ctx => {
 async function getAddressesInfoForSite() {
 	let sum = new BigNumber(0);
 	let total_balance = 0;
-	let rows = await db.query("SELECT address, attested, referrerCode, device_address FROM user_addresses JOIN users USING(device_address)");
+	let rows = await db.query("SELECT address, attested, code, referrerCode FROM user_addresses JOIN users USING(device_address)");
 	let objAddresses = {};
 	let addresses = [];
 	for(let i = 0; i < rows.length; i++){
 		let row = rows[i];
 		addresses.push(row.address);
-		let userInfo = await getUserInfo(row.device_address);
 		objAddresses[row.address] = {
 			attested: row.attested,
 			points: new BigNumber(0),
 			balance: 0,
 			referrerCode: row.referrerCode,
-			totalPointsOfReferrals: row.attested ? (await getPointsOfReferrals(userInfo.code)) : 0
+			totalPointsOfReferrals: row.attested ? (await getPointsOfReferrals(row.code)) : 0
 		};
 	}
 	
@@ -604,6 +655,9 @@ async function updateNewAttestations() {
 	if (rows.length === 0)
 		return;
 	let new_attested_addresses = rows.map(row => row.address);
+	new_attested_addresses.forEach(address => {
+		assocAttestedByAddress[address] = 1;
+	});
 	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [new_attested_addresses]);
 }
 
@@ -621,6 +675,18 @@ function makeCode() {
 	
 	return text;
 }
+
+eventBus.on('new_my_transactions', async (arrUnits) => {
+	let rows = await db.query(
+		"SELECT address FROM unit_authors CROSS JOIN user_addresses USING(address) WHERE unit IN(?) \n\
+		UNION \n\
+		SELECT address FROM outputs CROSS JOIN user_addresses USING(address) WHERE unit IN(?) AND asset IS NULL"
+		[arrUnits, arrUnits]);
+	// reset cache of affected addresses
+	rows.forEach(row => {
+		delete assocBalances[row.address];
+	});
+});
 
 app.listen(3000);
 setInterval(updateNewAttestations, 3600*1000);
