@@ -260,7 +260,7 @@ async function getUserBalance(device_address) {
 async function getPointsOfReferrals(code) {
 	let sum = new BigNumber(0);
 	let rows = await db.query(
-		"SELECT address, attested \n\
+		"SELECT address, attested, SUM(amount) AS balance \n\
 		FROM users CROSS JOIN user_addresses USING(device_address) CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
 		WHERE referrerCode = ? AND is_spent=0 AND sequence='good' AND asset IS NULL \n\
 		GROUP BY address", [code]);
