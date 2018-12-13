@@ -278,6 +278,7 @@ async function getPointsOfReferrals(code) {
 setInterval(async () => {
 	if (moment() > moment(conf.drawDate, 'DD.MM.YYYY hh:mm')) {
 		updateNextRewardInConf();
+		await updateNewAttestations();
 		let arrPoints = [];
 		let sum = new BigNumber(0);
 		let rows3 = await db.query("SELECT address FROM user_addresses");
