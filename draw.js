@@ -153,7 +153,7 @@ async function showStatus(device_address, userInfo) {
 	for (let i = 0; i < addressesRows.length; i++) {
 		let address = addressesRows[i].address;
 		let attested = addressesRows[i].attested;
-		let objPoints = await calcPoints(await getAddressBalance(address), address);
+		let objPoints = await calcPoints(await getAddressBalance(address), address, attested);
 		text += address + '\n(' + (attested ? 'attested' : 'non-attested') + '), points: ' + objPoints.points + '\n' +
 			(objPoints.pointsForBalanceAboveThreshold.toNumber() > 0 ?
 				'\t' + objPoints.pointsForBalanceAboveThreshold.toString() + ' points for balance above ' + conf.balanceThreshold + ' GB\n' : '') +
@@ -259,17 +259,15 @@ async function getUserBalance(device_address) {
 
 async function getPointsOfReferrals(code) {
 	let sum = new BigNumber(0);
-	let rows = await db.query("SELECT address FROM users JOIN user_addresses USING(device_address) WHERE referrerCode = ?", [code]);
-	let addresses = rows.map(row => row.address);
-	if (!addresses.length) return "0";
-	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
-				FROM outputs JOIN units USING(unit)\n\
-				WHERE is_spent=0 AND address IN(?) AND sequence='good' AND asset IS NULL\n\
-				GROUP BY address", [addresses]);
+	let rows = await db.query(
+		"SELECT address, attested \n\
+		FROM users CROSS JOIN user_addresses USING(device_address) CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
+		WHERE referrerCode = ? AND is_spent=0 AND sequence='good' AND asset IS NULL \n\
+		GROUP BY address", [code]);
 	
-	for (let i = 0; i < rows1.length; i++) {
-		let row = rows1[i];
-		let points = (await calcPoints(row.balance, row.address)).points;
+	for (let i = 0; i < rows.length; i++) {
+		let row = rows[i];
+		let points = (await calcPoints(row.balance, row.address, row.attested)).points;
 		if (points.gt(0)) {
 			sum = sum.add(points);
 		}
@@ -287,15 +285,15 @@ setInterval(async () => {
 		rows3.forEach(row => {
 			assocAddressesToBalance[row.address] = 0;
 		});
-		let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
-				FROM outputs JOIN units USING(unit)\n\
-				WHERE is_spent=0 AND address IN(SELECT address FROM user_addresses) AND sequence='good' AND asset IS NULL\n\
+		let rows1 = await db.query("SELECT address, attested, SUM(amount) AS balance\n\
+				FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
+				WHERE is_spent=0 AND sequence='good' AND asset IS NULL\n\
 				GROUP BY address", []);
 		
 		for (let i = 0; i < rows1.length; i++) {
 			let row = rows1[i];
 			assocAddressesToBalance[row.address] = row.balance;
-			let points = (await calcPoints(row.balance, row.address)).points;
+			let points = (await calcPoints(row.balance, row.address, row.attested)).points;
 			if (points.gt(0)) {
 				arrPoints[i] = {address: row.address, points};
 				sum = sum.add(points);
@@ -451,10 +449,10 @@ function updateNextRewardInConf() {
 	});
 }
 
-async function calcPoints(balance, address) {
-	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ?", [address]);
-	if (!rows.length)
-		throw Error("address "+address+" not found");
+async function calcPoints(balance, address, attested) {
+//	let rows = await db.query("SELECT * FROM user_addresses WHERE address = ?", [address]);
+//	if (!rows.length)
+//		throw Error("address "+address+" not found");
 	
 	let bnBalance = new BigNumber(balance).div(conf.unitValue);
 	let bnThreshold = new BigNumber(conf.balanceThreshold);
@@ -463,7 +461,7 @@ async function calcPoints(balance, address) {
 	let pointsForBalanceBelowThreshold = new BigNumber(0);
 	let points = new BigNumber(0);
 	let pointsForChange = new BigNumber(0);
-	if (rows[0].attested) {
+	if (attested) {
 		if (balance > thresholdInBytes) {
 			pointsForBalanceAboveThreshold = bnBalance.minus(bnThreshold).times(conf.multiplierForAmountAboveThreshold);
 			pointsForBalanceBelowThreshold = bnThreshold;
@@ -569,7 +567,7 @@ async function getAddressesInfoForSite() {
 			GROUP BY address ORDER BY balance DESC");
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
-		let points = (await calcPoints(row.balance, row.address)).points;
+		let points = (await calcPoints(row.balance, row.address, objAddresses[row.address].attested)).points;
 		let nPoints = points.toNumber();
 		objAddresses[row.address].points = points.toString();
 		let gb_balance = row.balance / 1e9;
