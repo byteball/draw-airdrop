@@ -303,6 +303,10 @@ async function getPointsOfReferrals(code) {
 	for (let j=0; j<arrReferredDevices.length; j++){
 		let device_address = arrReferredDevices[j];
 		let arrAddresses = assocAddressesByDevice[device_address];
+		if (!arrAddresses){
+			console.error("ref code "+code+", device "+device_address+": no addresses");
+			continue;
+		}
 		for (let i=0; i<arrAddresses.length; i++){
 			let address = arrAddresses[i];
 			let balance = await getAddressBalance(address);
