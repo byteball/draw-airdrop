@@ -639,6 +639,7 @@ async function getAddressesInfoForSite() {
 		objAddresses[row.address] = {
 			attested: row.attested,
 			points: new BigNumber(0),
+			pointsForChange: new BigNumber(0),
 			balance: 0,
 			referrerCode: row.referrerCode,
 			totalPointsOfReferrals: row.attested ? (await getPointsOfReferrals(row.code)) : 0
@@ -657,11 +658,13 @@ async function getAddressesInfoForSite() {
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
 		let time = process.hrtime();
-		let points = (await calcPoints(row.balance, row.address, objAddresses[row.address].attested)).points;
+		let objPoints = await calcPoints(row.balance, row.address, objAddresses[row.address].attested);
+		let points = objPoints.points;
 		points_time += getTimeElapsed(time);
 		time = process.hrtime();
 		let nPoints = points.toNumber();
 		objAddresses[row.address].points = points.toString();
+		objAddresses[row.address].pointsForChange = objPoints.pointsForChange.toString();
 		let gb_balance = row.balance / 1e9;
 		objAddresses[row.address].balance = gb_balance;
 		sum = sum.add(points);

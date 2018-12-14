@@ -31,6 +31,7 @@
 		<th>Address</th>
 		<th>Balance</th>
 		<th>Points</th>
+		<th>Points for change</th>
 		<th>Attested</th>
 		<th>Referrer</th>
 		<th>Total points of referrals</th>
@@ -40,6 +41,7 @@
 		<td><a href="https://explorer.byteball.org/#<%= k %>" target="_blank"><%= k %></a></td>
 		<td class="right"><%= objAddresses[k].balance %></td>
 		<td class="right"><%= objAddresses[k].points %></td>
+		<td class="right"><%= objAddresses[k].pointsForChange %></td>
 		<td class="center"><%= objAddresses[k].attested %></td>
 		<td><%= objAddresses[k].referrerCode %></td>
 		<td class="right"><%= objAddresses[k].totalPointsOfReferrals %></td>
