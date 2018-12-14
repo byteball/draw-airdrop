@@ -195,7 +195,7 @@ async function showStatus(device_address, userInfo) {
 	let totalPointsOfReferrals = await getPointsOfReferrals(userInfo.code);
 	device.sendMessageToDevice(device_address, 'text', 'Your points: ' + sum.toString() + '\nTotal points of your referrals: ' + totalPointsOfReferrals +
 		'\n\nLinked addresses:\n' + text +
-		'\nChances to win are proportianal to the points you have. Current rules:\n' +
+		'\nChances to win are proportional to the points you have. Current rules:\n' +
 		getRulesText() +
 		'\n\n[Add another address](command:add new address)' +
 		'\nIf you refer new users and one of them wins, you also win. [Learn more](command:ref).'
