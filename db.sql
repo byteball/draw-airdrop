@@ -12,6 +12,7 @@ CREATE TABLE user_addresses (
 	device_address CHAR(33) NOT NULL,
 	address CHAR(32) NOT NULL,
 	attested TINYINT NOT NULL DEFAULT 0,
+	excluded TINYINT NOT NULL DEFAULT 0,
 	date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY(address),
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
@@ -44,3 +45,7 @@ CREATE TABLE prev_balances (
 	FOREIGN KEY (address) REFERENCES user_addresses(address),
 	FOREIGN KEY (draw_id) REFERENCES draws(draw_id)
 );
+
+/*
+ALTER TABLE user_addresses ADD COLUMN excluded TINYINT NOT NULL DEFAULT 0;
+*/

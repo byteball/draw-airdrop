@@ -338,14 +338,14 @@ setInterval(async () => {
 		assocBalances = {}; // reset the cache
 		let arrPoints = [];
 		let sum = new BigNumber(0);
-		let rows3 = await db.query("SELECT address FROM user_addresses");
+		let rows3 = await db.query("SELECT address FROM user_addresses WHERE excluded=0");
 		let assocAddressesToBalance = {};
 		rows3.forEach(row => {
 			assocAddressesToBalance[row.address] = 0;
 		});
 		let rows1 = await db.query("SELECT address, attested, SUM(amount) AS balance\n\
 				FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
-				WHERE is_spent=0 AND sequence='good' AND asset IS NULL\n\
+				WHERE is_spent=0 AND sequence='good' AND asset IS NULL AND excluded=0 \n\
 				GROUP BY address", []);
 		
 		for (let i = 0; i < rows1.length; i++) {
@@ -621,7 +621,7 @@ app.use(async ctx => {
 async function getAddressesInfoForSite() {
 	let sum = new BigNumber(0);
 	let total_balance = 0;
-	let rows = await db.query("SELECT address, attested, code, referrerCode FROM user_addresses JOIN users USING(device_address)");
+	let rows = await db.query("SELECT address, attested, code, referrerCode FROM user_addresses JOIN users USING(device_address) WHERE excluded=0");
 	let objAddresses = {};
 	let addresses = [];
 	for(let i = 0; i < rows.length; i++){
