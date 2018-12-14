@@ -644,7 +644,7 @@ async function getAddressesInfoForSite() {
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 			FROM outputs \n\
 			WHERE is_spent=0 AND address IN(" + addresses.map(db.escape).join(', ') + ")  AND asset IS NULL\n\
-			GROUP BY address ORDER BY balance DESC");
+			GROUP BY address");
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
 		let time = process.hrtime();
@@ -670,8 +670,8 @@ async function getAddressesInfoForSite() {
 	let balance_gini = gini.ordered(arrBalances.sort((a, b) => a - b));
 	let points_gini = gini.ordered(arrPoints.sort((a, b) => a - b));
 	let gini_time = getTimeElapsed(time);
-	console.error("points "+points_time+"s, calc "+calc_time+"s, gini "+gini_time+"s");
 	let whale_dominance = whale_sum.div(sum).times(new BigNumber(100)).toFixed(2);
+	console.error("points "+points_time+"s, calc "+calc_time+"s, gini "+gini_time+"s");
 	return {objAddresses, sum, total_balance: total_balance / 1e9, balance_gini, points_gini, dust_threshold, whale_dominance, whale_threshold};
 }
 
