@@ -665,15 +665,16 @@ async function getAddressesInfoForSite() {
 			whale_sum = whale_sum.add(points);
 		calc_time += getTimeElapsed(time);
 	}
-	sum = sum.toString();
 	let time = process.hrtime();
 	let balance_gini = gini.ordered(arrBalances.sort((a, b) => a - b));
 	let points_gini = gini.ordered(arrPoints.sort((a, b) => a - b));
 	let gini_time = getTimeElapsed(time);
 	time = process.hrtime();
 	let whale_dominance = whale_sum.div(sum).times(new BigNumber(100)).toFixed(2);
+//	let whale_dominance = (whale_sum.toNumber()/sum.toNumber()*100).toFixed(2);
 	let whale_time = getTimeElapsed(time);
 	console.error("points "+points_time+"s, calc "+calc_time+"s, gini "+gini_time+"s, whale "+whale_time+"s");
+	sum = sum.toString();
 	return {objAddresses, sum, total_balance: total_balance / 1e9, balance_gini, points_gini, dust_threshold, whale_dominance, whale_threshold};
 }
 
