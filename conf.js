@@ -43,8 +43,10 @@ exports.rewardForReferrerInBlackbytes = exports.rewardForReferrerInBytes * 2.111
 
 exports.payoutCheckInterval = 60000 * 10;
 
-exports.balanceThreshold = 10; // in GB
-exports.multiplierForAmountAboveThreshold = 0.1;
+exports.balanceThreshold1 = 10; // in GB
+exports.balanceThreshold2 = 1000; // in GB
+exports.multiplierForAmountAboveThreshold1 = 0.1;
+exports.multiplierForAmountAboveThreshold2 = 0.01;
 exports.multiplierForNonAttested = 0.01;
 exports.multiplierForBalanceIncrease = 0.1;
 exports.multiplierForBalanceDecrease = 0.2;

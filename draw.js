@@ -33,14 +33,14 @@ function getTextToSign(address){
 }
 
 function getRulesText(){
-	return '➡ Real-name attested addresses get 1 point per GB of balance up to '+conf.balanceThreshold+' GB and additionally '+conf.multiplierForAmountAboveThreshold+' point for each GB above that.\n' +
-		'➡ For unattested addresses, '+conf.multiplierForNonAttested+' point per GB of balance.\n' +
+	return '➡ Real-name attested addresses get 1 point per GB of balance up to '+conf.balanceThreshold1+' GB, plus '+conf.multiplierForAmountAboveThreshold1+' point for each GB between '+conf.balanceThreshold1+' GB and '+conf.balanceThreshold2+' GB, plus '+conf.multiplierForAmountAboveThreshold2+' point for each GB above '+conf.balanceThreshold2+' GB.\n' +
+		'➡ Unattested addresses get '+conf.multiplierForNonAttested+' point per GB of balance.\n' +
 		'➡ '+conf.multiplierForBalanceIncrease+' point is awarded for each GB of balance increase since the previous draw.\n' +
 		'➡ '+conf.multiplierForBalanceDecrease+' point is deducted for each GB of balance decrease since the previous draw.';
 }
 
 function getGreetingText(){
-	return "Welcome to our weekly airdrop!  Every week, a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB is airdropped to a single winner.  This could be you!  It is like a lottery but you don't have to buy lottery tickets - just prove your existing balance.\n\nYour chance to win depends on the balances of the addresses you link here - the larger the balances, the more points you get.  The winner of the current draw will be selected in a proven random way on " + conf.drawDate + " UTC. The more points you have on this date, the higher your chance of winning.\n\nThe rules are designed in favor of smaller participants.  Balances of more than "+conf.balanceThreshold+" GB add less points than balances of less than "+conf.balanceThreshold+" GB.  To get more points, you may pass a real name attestation - find \"Real name attestation bot\" in the Bot Store. The draw bot won't see your personal details, only the fact that you are attested.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB.  Instructions will be shown after you link your own address.\n\nPlease send me the address of your wallet you want to enter in the weekly draw (click '...' and 'Insert my address').";
+	return "Welcome to our weekly airdrop!  Every week, a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB is airdropped to a single winner.  This could be you!  It is like a lottery but you don't have to buy lottery tickets - just prove your existing balance.\n\nYour chance to win depends on the balances of the addresses you link here - the larger the balances, the more points you get.  The winner of the current draw will be selected in a proven random way on " + conf.drawDate + " UTC. The more points you have on this date, the higher your chance of winning.\n\nThe rules are designed in favor of smaller participants.  Balances of more than "+conf.balanceThreshold1+" GB add less points than balances of less than "+conf.balanceThreshold1+" GB.  To get more points, you may pass a real name attestation - find \"Real name attestation bot\" in the Bot Store. The draw bot won't see your personal details, only the fact that you are attested.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB.  Instructions will be shown after you link your own address.\n\nPlease send me the address of your wallet you want to enter in the weekly draw (click '...' and 'Insert my address').";
 }
 
 function sendGreeting(device_address){
@@ -181,10 +181,12 @@ async function showStatus(device_address, userInfo) {
 		let attested = addressesRows[i].attested;
 		let objPoints = await calcPoints(await getAddressBalance(address), address, attested);
 		text += address + '\n(' + (attested ? 'attested' : 'non-attested') + '), points: ' + objPoints.points + '\n' +
-			(objPoints.pointsForBalanceAboveThreshold.toNumber() > 0 ?
-				'\t' + objPoints.pointsForBalanceAboveThreshold.toString() + ' points for balance above ' + conf.balanceThreshold + ' GB\n' : '') +
-			(objPoints.pointsForBalanceBelowThreshold.toNumber() > 0 ?
-				'\t' + objPoints.pointsForBalanceBelowThreshold.toString() + ' points for balance below ' + conf.balanceThreshold + ' GB\n' : '') +
+			(objPoints.pointsForBalanceAboveThreshold2.toNumber() > 0 ?
+				'\t' + objPoints.pointsForBalanceAboveThreshold2.toString() + ' points for balance above ' + conf.balanceThreshold2 + ' GB\n' : '') +
+			(objPoints.pointsForBalanceAboveThreshold1.toNumber() > 0 ?
+				'\t' + objPoints.pointsForBalanceAboveThreshold1.toString() + ' points for balance above ' + conf.balanceThreshold1 + ' GB\n' : '') +
+			(objPoints.pointsForBalanceBelowThreshold1.toNumber() > 0 ?
+				'\t' + objPoints.pointsForBalanceBelowThreshold1.toString() + ' points for balance below ' + conf.balanceThreshold1 + ' GB\n' : '') +
 			(objPoints.pointsForChange.toNumber() ?
 				'\t' + objPoints.pointsForChange.toString() + ' points for balance change from the previous draw' : '') +
 			'';
@@ -514,20 +516,27 @@ async function calcPoints(balance, address, attested) {
 //		throw Error("address "+address+" not found");
 	
 	let bnBalance = new BigNumber(balance).div(conf.unitValue);
-	let bnThreshold = new BigNumber(conf.balanceThreshold);
-	let thresholdInBytes = conf.balanceThreshold * conf.unitValue;
-	let pointsForBalanceAboveThreshold = new BigNumber(0);
-	let pointsForBalanceBelowThreshold = new BigNumber(0);
+	let bnThreshold1 = new BigNumber(conf.balanceThreshold1);
+	let bnThreshold2 = new BigNumber(conf.balanceThreshold2);
+	let threshold1InBytes = conf.balanceThreshold1 * conf.unitValue;
+	let threshold2InBytes = conf.balanceThreshold2 * conf.unitValue;
+	let pointsForBalanceAboveThreshold2 = new BigNumber(0);
+	let pointsForBalanceAboveThreshold1 = new BigNumber(0);
+	let pointsForBalanceBelowThreshold1 = new BigNumber(0);
 	let points = new BigNumber(0);
 	let pointsForChange = new BigNumber(0);
 	if (attested) {
-		if (balance > thresholdInBytes) {
-			pointsForBalanceAboveThreshold = bnBalance.minus(bnThreshold).times(conf.multiplierForAmountAboveThreshold);
-			pointsForBalanceBelowThreshold = bnThreshold;
+		if (balance > threshold2InBytes) {
+			pointsForBalanceAboveThreshold2 = bnBalance.minus(bnThreshold2).times(conf.multiplierForAmountAboveThreshold2);
+			pointsForBalanceAboveThreshold1 = bnThreshold2.minus(bnThreshold1).times(conf.multiplierForAmountAboveThreshold1);
+			pointsForBalanceBelowThreshold1 = bnThreshold1;
+		} else if (balance > threshold1InBytes) {
+			pointsForBalanceAboveThreshold1 = bnBalance.minus(bnThreshold1).times(conf.multiplierForAmountAboveThreshold1);
+			pointsForBalanceBelowThreshold1 = bnThreshold1;
 		} else {
-			pointsForBalanceBelowThreshold = bnBalance;
+			pointsForBalanceBelowThreshold1 = bnBalance;
 		}
-		points = pointsForBalanceBelowThreshold.add(pointsForBalanceAboveThreshold);
+		points = pointsForBalanceBelowThreshold1.add(pointsForBalanceAboveThreshold1).add(pointsForBalanceAboveThreshold2);
 	} else {
 		points = bnBalance.times(conf.multiplierForNonAttested);
 	}
@@ -542,7 +551,7 @@ async function calcPoints(balance, address, attested) {
 			points = points.add(pointsForChange);
 		}
 	}
-	return {points: points, pointsForBalanceAboveThreshold, pointsForBalanceBelowThreshold, pointsForChange};
+	return {points: points, pointsForBalanceAboveThreshold2, pointsForBalanceAboveThreshold1, pointsForBalanceBelowThreshold1, pointsForChange};
 }
 
 async function getPrevBalance(address){
