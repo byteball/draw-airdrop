@@ -670,8 +670,8 @@ async function getAddressesInfoForSite() {
 	let points_gini = gini.ordered(arrPoints.sort((a, b) => a - b));
 	let gini_time = getTimeElapsed(time);
 	time = process.hrtime();
-	let whale_dominance = whale_sum.div(sum).times(new BigNumber(100)).toFixed(2);
-//	let whale_dominance = (whale_sum.toNumber()/sum.toNumber()*100).toFixed(2);
+//	let whale_dominance = whale_sum.div(sum).times(new BigNumber(100)).toFixed(2);
+	let whale_dominance = (whale_sum.toNumber()/sum.toNumber()*100).toFixed(2);
 	let whale_time = getTimeElapsed(time);
 	console.error("points "+points_time+"s, calc "+calc_time+"s, gini "+gini_time+"s, whale "+whale_time+"s");
 	sum = sum.toString();
