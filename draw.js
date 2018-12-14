@@ -612,7 +612,10 @@ app.use(async ctx => {
 		addressesInfo.hadPreviousDraw = false;
 	}
 	addressesInfo.drawDate = conf.drawDate;
+	let time = process.hrtime();
 	await ctx.render('index', addressesInfo);
+	let render_time = getTimeElapsed(time);
+	console.log("render "+render_time+"s");
 });
 
 async function getAddressesInfoForSite() {
