@@ -19,7 +19,7 @@ const gini = require("gini");
 const dust_threshold = 0.1; // for Gini coefficients
 const whale_threshold = 500;
 
-BigNumber.config({DECIMAL_PLACES: 1e8, EXPONENTIAL_AT: [-1e+9, 1e9]});
+BigNumber.config({DECIMAL_PLACES: 30, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
 let assocReceivedGreeting = {};
 let assocPrevBalances = {};
