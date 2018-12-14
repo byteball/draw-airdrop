@@ -636,13 +636,18 @@ async function getAddressesInfoForSite() {
 	let arrPoints = [];
 	let arrBalances = [];
 	let whale_sum = new BigNumber(0);
+	let points_time = 0;
+	let calc_time = 0;
 	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
 			FROM outputs \n\
 			WHERE is_spent=0 AND address IN(" + addresses.map(db.escape).join(', ') + ")  AND asset IS NULL\n\
 			GROUP BY address ORDER BY balance DESC");
 	for (let i = 0; i < rows1.length; i++) {
 		let row = rows1[i];
+		let time = process.hrtime();
 		let points = (await calcPoints(row.balance, row.address, objAddresses[row.address].attested)).points;
+		points_time += getTimeElapsed(time);
+		time = process.hrtime();
 		let nPoints = points.toNumber();
 		objAddresses[row.address].points = points.toString();
 		let gb_balance = row.balance / 1e9;
@@ -655,12 +660,21 @@ async function getAddressesInfoForSite() {
 			arrPoints.push(nPoints);
 		if (gb_balance > whale_threshold)
 			whale_sum = whale_sum.add(points);
+		calc_time += getTimeElapsed(time);
 	}
 	sum = sum.toString();
+	let time = process.hrtime();
 	let balance_gini = gini.ordered(arrBalances.sort((a, b) => a - b));
 	let points_gini = gini.ordered(arrPoints.sort((a, b) => a - b));
+	let gini_time = getTimeElapsed(time);
+	console.error("points "+points_time+"s, calc "+calc_time+"s, gini "+gini_time+"s");
 	let whale_dominance = whale_sum.div(sum).times(new BigNumber(100)).toFixed(2);
 	return {objAddresses, sum, total_balance: total_balance / 1e9, balance_gini, points_gini, dust_threshold, whale_dominance, whale_threshold};
+}
+
+function getTimeElapsed(time){
+	let diff = process.hrtime(time);
+	return diff[0] + diff[1]/1e9;
 }
 
 async function updateNewAttestations() {
