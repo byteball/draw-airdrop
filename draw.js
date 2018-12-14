@@ -620,7 +620,7 @@ app.use(async ctx => {
 	} else {
 		addressesInfo.hadPreviousDraw = false;
 	}
-	addressesInfo.drawDate = conf.drawDate;
+	addressesInfo.conf = conf;
 	let time = process.hrtime();
 	await ctx.render('index', addressesInfo);
 	let render_time = getTimeElapsed(time);
