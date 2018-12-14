@@ -45,7 +45,7 @@ exports.payoutCheckInterval = 60000 * 10;
 
 exports.balanceThreshold = 10; // in GB
 exports.multiplierForAmountAboveThreshold = 0.1;
-exports.multiplierForNonAttested = 0.1;
+exports.multiplierForNonAttested = 0.01;
 exports.multiplierForBalanceIncrease = 0.1;
 exports.multiplierForBalanceDecrease = 0.2;
 
