@@ -615,7 +615,7 @@ app.use(async ctx => {
 	let time = process.hrtime();
 	await ctx.render('index', addressesInfo);
 	let render_time = getTimeElapsed(time);
-	console.log("render "+render_time+"s");
+	console.error("render "+render_time+"s");
 });
 
 async function getAddressesInfoForSite() {
