@@ -221,6 +221,13 @@ async function getAddresses(device_address) {
 }
 
 async function saveAddress(device_address, user_address) {
+	if (!assocAddressesByDevice[device_address])
+		assocAddressesByDevice[device_address] = [];
+	assocAddressesByDevice[device_address].push(user_address);
+	assocAttestedByAddress[user_address] = attested;
+	const network = require('byteballcore/network');
+	network.addWatchedAddress(user_address);
+	
 	let rows = await db.query("SELECT device_address FROM users WHERE device_address = ?", [device_address]);
 	if (!rows.length) {
 		await createUser(device_address);
@@ -228,13 +235,6 @@ async function saveAddress(device_address, user_address) {
 	let att_rows = await db.query("SELECT 1 FROM attestations WHERE attestor_address IN(?) AND address=?", [conf.arrRealNameAttestors, user_address]);
 	let attested = (att_rows.length > 0) ? 1 : 0;
 	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address, attested) VALUES (?,?,?)", [device_address, user_address, attested]);
-	
-	if (!assocAddressesByDevice[device_address])
-		assocAddressesByDevice[device_address] = [];
-	assocAddressesByDevice[device_address].push(user_address);
-	assocAttestedByAddress[user_address] = attested;
-	const network = require('byteballcore/network');
-	network.addWatchedAddress(user_address);
 	
 	return attested;
 }
