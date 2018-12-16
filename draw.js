@@ -541,7 +541,7 @@ async function calcPoints(balance, address, attested) {
 		points = bnBalance.times(conf.multiplierForNonAttested);
 	}
 	let prev_balance = await getPrevBalance(address);
-	if (prev_balance !== null) {
+	if (prev_balance) {
 		let deltaInGB = bnBalance.minus(new BigNumber(prev_balance).div(conf.unitValue));
 		if (balance > prev_balance) {
 			pointsForChange = deltaInGB.times(conf.multiplierForBalanceIncrease);
