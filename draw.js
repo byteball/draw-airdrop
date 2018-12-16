@@ -651,25 +651,22 @@ async function getAddressesInfoForSite() {
 	let whale_sum = new BigNumber(0);
 	let points_time = 0;
 	let calc_time = 0;
-	let rows1 = await db.query("SELECT address, SUM(amount) AS balance\n\
-			FROM outputs \n\
-			WHERE is_spent=0 AND address IN(" + addresses.map(db.escape).join(', ') + ")  AND asset IS NULL\n\
-			GROUP BY address");
-	for (let i = 0; i < rows1.length; i++) {
-		let row = rows1[i];
+	for (let i = 0; i < rows.length; i++) {
+		let row = rows[i];
 		let time = process.hrtime();
-		let objPoints = await calcPoints(row.balance, row.address, objAddresses[row.address].attested);
+		let balance = await getAddressBalance(row.address);
+		let objPoints = await calcPoints(balance, row.address, row.attested);
 		let points = objPoints.points;
 		points_time += getTimeElapsed(time);
 		time = process.hrtime();
 		let nPoints = points.toNumber();
 		objAddresses[row.address].points = points.toString();
 		objAddresses[row.address].pointsForChange = objPoints.pointsForChange.toString();
-		let gb_balance = row.balance / 1e9;
+		let gb_balance = balance / 1e9;
 		objAddresses[row.address].balance = gb_balance;
 		if (nPoints > 0)
 			sum = sum.add(points);
-		total_balance += row.balance;
+		total_balance += balance;
 		if (gb_balance > dust_threshold)
 			arrBalances.push(gb_balance);
 		if (nPoints > dust_threshold)
