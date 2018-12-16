@@ -667,13 +667,14 @@ async function getAddressesInfoForSite() {
 		objAddresses[row.address].pointsForChange = objPoints.pointsForChange.toString();
 		let gb_balance = row.balance / 1e9;
 		objAddresses[row.address].balance = gb_balance;
-		sum = sum.add(points);
+		if (nPoints > 0)
+			sum = sum.add(points);
 		total_balance += row.balance;
 		if (gb_balance > dust_threshold)
 			arrBalances.push(gb_balance);
 		if (nPoints > dust_threshold)
 			arrPoints.push(nPoints);
-		if (gb_balance > whale_threshold)
+		if (gb_balance > whale_threshold && nPoints > 0)
 			whale_sum = whale_sum.add(points);
 		calc_time += getTimeElapsed(time);
 	}
