@@ -13,6 +13,7 @@ CREATE TABLE user_addresses (
 	address CHAR(32) NOT NULL,
 	attested TINYINT NOT NULL DEFAULT 0,
 	excluded TINYINT NOT NULL DEFAULT 0,
+	attested_user_id CHAR(44) NULL UNIQUE,
 	date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY(address),
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
@@ -48,4 +49,7 @@ CREATE TABLE prev_balances (
 
 /*
 ALTER TABLE user_addresses ADD COLUMN excluded TINYINT NOT NULL DEFAULT 0;
+ALTER TABLE user_addresses ADD COLUMN attested_user_id CHAR(44) NULL;
+CREATE UNIQUE INDEX byAttUserId ON user_addresses(attested_user_id);
+UPDATE user_addresses SET attested_user_id=(SELECT value FROM attested_fields WHERE attestor_address='I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT' AND attested_fields.address=user_addresses.address AND field='user_id') WHERE attested=1;
 */

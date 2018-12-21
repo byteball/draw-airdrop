@@ -233,10 +233,35 @@ async function saveAddress(device_address, user_address) {
 	if (!rows.length) {
 		await createUser(device_address);
 	}
-	let att_rows = await db.query("SELECT 1 FROM attestations WHERE attestor_address IN(?) AND address=?", [conf.arrRealNameAttestors, user_address]);
-	let attested = (att_rows.length > 0) ? 1 : 0;
+	let attested = 0;
+	let attested_user_id = null;
+	// check real name attestation first
+	let att_rows = await db.query("SELECT `value` FROM attested_fields WHERE attestor_address IN(?) AND address=? AND `field`='user_id'", [conf.arrRealNameAttestors, user_address]);
+	if (att_rows.length > 0){
+		attested = 1;
+		attested_user_id = att_rows[0].value;
+	}
+	if (!attested){ // try steem
+		let att_rows = await db.query(
+			"SELECT payload FROM attestations CROSS JOIN messages USING(unit, message_index) WHERE attestor_address IN(?) AND address=?",
+			[conf.arrSteemAttestors, user_address]);
+		att_rows.forEach(att_row => {
+			let payload = JSON.parse(att_row.payload);
+			if (payload.profile.reputation < conf.minSteemReputation)
+				continue;
+			attested = 1;
+			attested_user_id = payload.profile.user_id;
+		});
+	}
+	if (attested){ // check if same user_id is already registered
+		let dup_rows = await db.query("SELECT 1 FROM user_addresses WHERE attested_user_id=?", [attested_user_id]);
+		if (dup_rows.length > 0){
+			attested = 0;
+			attested_user_id = null;
+		}
+	}
 	assocAttestedByAddress[user_address] = attested;
-	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address, attested) VALUES (?,?,?)", [device_address, user_address, attested]);
+	await db.query("INSERT " + db.getIgnore() + " INTO user_addresses (device_address, address, attested, attested_user_id) VALUES (?,?,?,?)", [device_address, user_address, attested, attested_user_id]);
 	
 	return attested;
 }
@@ -355,7 +380,7 @@ setInterval(async () => {
 			assocAddressesToBalance[row.address] = row.balance;
 			let points = (await calcPoints(row.balance, row.address, row.attested)).points;
 			if (points.gt(0)) {
-				arrPoints[i] = {address: row.address, points};
+				arrPoints.push({address: row.address, points});
 				sum = sum.add(points);
 			}
 		}
@@ -694,15 +719,30 @@ function getTimeElapsed(time){
 }
 
 async function updateNewAttestations() {
-	let rows = await db.query("SELECT address FROM user_addresses CROSS JOIN attestations USING(address) WHERE attestor_address IN(?) AND attested=0",
-		[conf.arrRealNameAttestors]);
+	let rows = await db.query(
+		"SELECT address, `value`, attestor_address, payload \n\
+		FROM user_addresses CROSS JOIN attested_fields USING(address) CROSS JOIN messages USING(unit, message_index) \n\
+		WHERE attested=0 AND attestor_address IN(?) AND `field`='user_id' \n\
+			AND NOT EXISTS (SELECT 1 FROM user_addresses WHERE attested_user_id=`value`)",
+		[conf.arrRealNameAttestors.concat(conf.arrSteemAttestors)]);
+	console.log(rows.length+" new attestations");
 	if (rows.length === 0)
 		return;
-	let new_attested_addresses = rows.map(row => row.address);
-	new_attested_addresses.forEach(address => {
+	let assocUsedUserIds = {};
+	rows.forEach(row => {
+		if (assocUsedUserIds[row.value])
+			return;
+		if (conf.arrSteemAttestors.includes(row.attestor_address)){
+			let payload = JSON.parse(row.payload);
+			if (payload.profile.user_id !== row.value)
+				throw Error("user_id mismatch");
+			if (payload.profile.reputation < conf.minSteemReputation)
+				return;
+		}
+		assocUsedUserIds[row.value] = true;
 		assocAttestedByAddress[address] = 1;
+		db.query("UPDATE user_addresses SET attested = 1, attested_user_id=? WHERE address=?", [row.value, row.address]);
 	});
-	await db.query("UPDATE user_addresses SET attested = 1 WHERE address IN(?)", [new_attested_addresses]);
 }
 
 async function getAddressInfo(address) {
