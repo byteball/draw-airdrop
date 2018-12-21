@@ -23,6 +23,7 @@ BigNumber.config({DECIMAL_PLACES: 30, EXPONENTIAL_AT: [-1e+9, 1e9]});
 
 let assocReceivedGreeting = {};
 let assocPrevBalances = {};
+let assocMaxPrevBalances = {};
 let assocReferralsByCode = {};
 let assocAddressesByDevice = {};
 let assocAttestedByAddress = {};
@@ -35,7 +36,7 @@ function getTextToSign(address){
 function getRulesText(){
 	return '➡ Real-name attested addresses get 1 point per GB of balance up to '+conf.balanceThreshold1+' GB, plus '+conf.multiplierForAmountAboveThreshold1+' point for each GB between '+conf.balanceThreshold1+' GB and '+conf.balanceThreshold2+' GB, plus '+conf.multiplierForAmountAboveThreshold2+' point for each GB above '+conf.balanceThreshold2+' GB.\n' +
 		'➡ Unattested addresses get '+conf.multiplierForNonAttested+' point per GB of balance.\n' +
-		'➡ '+conf.multiplierForBalanceIncrease+' point is awarded for each GB of balance increase since the previous draw.\n' +
+		'➡ '+conf.multiplierForBalanceIncrease+' point is awarded for each GB of balance increase over the maximum balance in the previous draws, up to a '+conf.maxBalanceIncreaseFactor+'x increase.\n' +
 		'➡ '+conf.multiplierForBalanceDecrease+' point is deducted for each GB of balance decrease since the previous draw.';
 }
 
@@ -432,6 +433,7 @@ setInterval(async () => {
 			});
 		});
 		assocPrevBalances = {};
+		assocMaxPrevBalances = {};
 		pay(draw_id);
 		await sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, winner_address, refAddress);
 	}
@@ -566,15 +568,20 @@ async function calcPoints(balance, address, attested) {
 		points = bnBalance.times(conf.multiplierForNonAttested);
 	}
 	let prev_balance = await getPrevBalance(address);
-	if (prev_balance) {
+	let max_prev_balance = await getMaxPrevBalance(address);
+	if (max_prev_balance && balance > max_prev_balance) {
+		let deltaInGB;
+		if (balance < conf.maxBalanceIncreaseFactor * max_prev_balance)
+			deltaInGB = bnBalance.minus(new BigNumber(max_prev_balance).div(conf.unitValue));
+		else
+			deltaInGB = new BigNumber(max_prev_balance).times(conf.maxBalanceIncreaseFactor - 1).div(conf.unitValue);
+		pointsForChange = deltaInGB.times(conf.multiplierForBalanceIncrease);
+		points = points.add(pointsForChange);
+	}
+	if (prev_balance && balance < prev_balance) {
 		let deltaInGB = bnBalance.minus(new BigNumber(prev_balance).div(conf.unitValue));
-		if (balance > prev_balance) {
-			pointsForChange = deltaInGB.times(conf.multiplierForBalanceIncrease);
-			points = points.add(pointsForChange);
-		} else if (balance < prev_balance) {
-			pointsForChange = deltaInGB.times(conf.multiplierForBalanceDecrease);
-			points = points.add(pointsForChange);
-		}
+		pointsForChange = deltaInGB.times(conf.multiplierForBalanceDecrease);
+		points = points.add(pointsForChange);
 	}
 	return {points: points, pointsForBalanceAboveThreshold2, pointsForBalanceAboveThreshold1, pointsForBalanceBelowThreshold1, pointsForChange};
 }
@@ -585,6 +592,14 @@ async function getPrevBalance(address){
 	let rows = await db.query("SELECT balance FROM prev_balances WHERE address = ? AND draw_id=(SELECT draw_id FROM draws ORDER BY draw_id DESC LIMIT 1)", [address]);
 	assocPrevBalances[address] = rows.length ? rows[0].balance : null;
 	return assocPrevBalances[address];
+}
+
+async function getMaxPrevBalance(address){
+	if (assocMaxPrevBalances[address] !== undefined)
+		return assocMaxPrevBalances[address];
+	let rows = await db.query("SELECT MAX(balance) AS max_balance FROM prev_balances WHERE address = ?", [address]);
+	assocMaxPrevBalances[address] = rows.length ? rows[0].max_balance : null;
+	return assocMaxPrevBalances[address];
 }
 
 async function getReferrerFromAddress(address) {
