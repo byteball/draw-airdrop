@@ -740,7 +740,7 @@ async function updateNewAttestations() {
 				return;
 		}
 		assocUsedUserIds[row.value] = true;
-		assocAttestedByAddress[address] = 1;
+		assocAttestedByAddress[row.address] = 1;
 		db.query("UPDATE user_addresses SET attested = 1, attested_user_id=? WHERE address=?", [row.value, row.address]);
 	});
 }
