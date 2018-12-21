@@ -249,7 +249,7 @@ async function saveAddress(device_address, user_address) {
 		att_rows.forEach(att_row => {
 			let payload = JSON.parse(att_row.payload);
 			if (payload.profile.reputation < conf.minSteemReputation)
-				continue;
+				return;
 			attested = 1;
 			attested_user_id = payload.profile.user_id;
 		});
