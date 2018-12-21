@@ -37,7 +37,7 @@
 <ul>
 	<li>Real-name attested addresses and Steem-attested addresses with reputation over <%= conf.minSteemReputation %> get 1 point per GB of balance up to <%= conf.balanceThreshold1 %> GB, plus <%= conf.multiplierForAmountAboveThreshold1 %> point for each GB between <%= conf.balanceThreshold1 %> GB and <%= conf.balanceThreshold2 %> GB, plus <%= conf.multiplierForAmountAboveThreshold2 %> point for each GB above <%= conf.balanceThreshold2 %> GB.</li>
 	<li>Unattested addresses get <%= conf.multiplierForNonAttested %> point per GB of balance.</li>
-	<li><%= conf.multiplierForBalanceIncrease %> point is awarded for each GB of balance increase over the maximum balance in the previous draws, up to a <% = conf.maxBalanceIncreaseFactor %>x increase.</li>
+	<li><%= conf.multiplierForBalanceIncrease %> point is awarded for each GB of balance increase over the maximum balance in the previous draws, up to a <%= conf.maxBalanceIncreaseFactor %>x increase.</li>
 	<li><%= conf.multiplierForBalanceDecrease %> point is deducted for each GB of balance decrease since the previous draw.</li>
 </ul>
 <p>Chances to win are proportional to points owned.  The winner gets <%= conf.rewardForWinnerInBytes/1e9 %> GB and <%= conf.rewardForWinnerInBlackbytes/1e9 %> GBB, the winner's referrer gets <%= conf.rewardForReferrerInBytes/1e9 %> GB and <%= conf.rewardForReferrerInBlackbytes/1e9 %> GGB.  See the <a href="https://medium.com/byteball/weekly-draw-for-the-byteball-community-f464ae731c88" target="_blank">announcement</a>.</p>
