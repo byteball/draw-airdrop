@@ -188,7 +188,7 @@ async function showStatus(device_address, userInfo) {
 			(objPoints.pointsForBalanceBelowThreshold1.toNumber() > 0 ?
 				'\t' + objPoints.pointsForBalanceBelowThreshold1.toString() + ' points for balance below ' + conf.balanceThreshold1 + ' GB\n' : '') +
 			(objPoints.pointsForChange.toNumber() ?
-				'\t' + objPoints.pointsForChange.toString() + ' points for balance change from the previous draw' : '') +
+				'\t' + objPoints.pointsForChange.toString() + ' points for balance change from the previous draw\n' : '') +
 			'';
 		sum = sum.add(objPoints.points);
 	}

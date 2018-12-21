@@ -4,15 +4,22 @@
 	<meta charset="UTF-8">
 	<title>Draw Airdrop</title>
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap.min.css" />
 	<link rel="icon" type="image/png" sizes="192x192"  href="https://byteball.org/static/android-icon-192x192.png">
 	<style>
-		body {margin: 10px}
+		body {margin: 15px}
 		table, tr, td, th {border: 1px solid gray}
 		th {text-align: center}
 		td, th {padding: 4px}
 		tr:nth-of-type(odd) {background-color:#eee}
 		.center {text-align: center}
 		.right {text-align: right}
+		table.dataTable {width:auto;}
+		div.dataTables_wrapper div.dataTables_filter,
+		div.dataTables_wrapper div.dataTables_paginate,
+		div.dataTables_wrapper div.dataTables_info {
+			text-align:left;
+		}
 	</style>
 </head>
 <body>
@@ -34,27 +41,31 @@
 	<li><%= conf.multiplierForBalanceDecrease %> point is deducted for each GB of balance decrease since the previous draw.</li>
 </ul>
 <p>Chances to win are proportional to points owned.  The winner gets <%= conf.rewardForWinnerInBytes/1e9 %> GB and <%= conf.rewardForWinnerInBlackbytes/1e9 %> GBB, the winner's referrer gets <%= conf.rewardForReferrerInBytes/1e9 %> GB and <%= conf.rewardForReferrerInBlackbytes/1e9 %> GGB.  See the <a href="https://medium.com/byteball/weekly-draw-for-the-byteball-community-f464ae731c88" target="_blank">announcement</a>.</p>
-<table>
-	<tr>
-		<th>Address</th>
-		<th>Balance</th>
-		<th>Points</th>
-		<th>Points for change</th>
-		<th>Attested</th>
-		<th>Referrer</th>
-		<th>Total points of referrals</th>
-	</tr>
-	<% for(var k in objAddresses) {%>
-	<tr>
-		<td><a href="https://explorer.byteball.org/#<%= k %>" target="_blank"><%= k %></a></td>
-		<td class="right"><%= objAddresses[k].balance %></td>
-		<td class="right"><%= objAddresses[k].points %></td>
-		<td class="right"><%= objAddresses[k].pointsForChange %></td>
-		<td class="center"><%= objAddresses[k].attested %></td>
-		<td><%= objAddresses[k].referrerCode %></td>
-		<td class="right"><%= objAddresses[k].totalPointsOfReferrals %></td>
-	</tr>
-	<% } %>
+<table id="participants" class="table table-striped table-bordered table-responsive">
+	<thead>
+		<tr>
+			<th>Address</th>
+			<th>Balance</th>
+			<th>Points</th>
+			<th>Points for change</th>
+			<th>Attested</th>
+			<th>Referrer</th>
+			<th>Total points of referrals</th>
+		</tr>
+	</thead>
+	<tbody>
+		<% for(var k in objAddresses) {%>
+		<tr>
+			<td><a href="https://explorer.byteball.org/#<%= k %>" target="_blank"><%= k %></a></td>
+			<td class="right"><%= objAddresses[k].balance %></td>
+			<td class="right"><%= objAddresses[k].points %></td>
+			<td class="right"><%= objAddresses[k].pointsForChange %></td>
+			<td class="center"><%= objAddresses[k].attested %></td>
+			<td><%= objAddresses[k].referrerCode %></td>
+			<td class="right"><%= objAddresses[k].totalPointsOfReferrals %></td>
+		</tr>
+		<% } %>
+	</tbody>
 </table>
 <br>
 Total balance: <%= total_balance %> GB<br>
@@ -65,5 +76,19 @@ Gini coefficient for balance (excluding balances below <%= dust_threshold %> GB)
 Gini coefficient for points (excluding values below <%= dust_threshold %>) <%= points_gini %><br>
 -->
 Whale dominance: <%= whale_dominance %>% (defined as % of points owned by addresses with balance over <%= whale_threshold %> GB)<br>
+<script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+<script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap.min.js"></script>
+<script>
+$(document).ready(function() {
+	$('#participants').DataTable({
+		"dom": 'ftpi',
+		"aaSorting": [],
+		'bAutoWidth': false,
+		"bLengthChange": false,
+		"pageLength": 100
+	});
+});
+</script>
 </body>
 </html>
