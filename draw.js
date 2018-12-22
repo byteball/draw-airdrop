@@ -371,7 +371,7 @@ setInterval(async () => {
 		let assocAddressesToPoints = {};
 		rows3.forEach(row => {
 			assocAddressesToBalance[row.address] = 0;
-			assocAddressesToPoints[row.address] = 0;
+			assocAddressesToPoints[row.address] = new BigNumber(0);
 		});
 		let rows1 = await db.query("SELECT address, attested, SUM(amount) AS balance\n\
 				FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
