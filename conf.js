@@ -22,6 +22,14 @@ exports.bSingleAddress = true;
 exports.bStaticChangeAddress = true;
 exports.KEYS_FILENAME = 'keys.json';
 
+// smtp https://github.com/byteball/byteballcore/blob/master/mail.js
+exports.smtpTransport = 'local'; // use 'local' for Unix Sendmail
+exports.smtpRelay = '';
+exports.smtpUser = '';
+exports.smtpPassword = '';
+exports.smtpSsl = null;
+exports.smtpPort = null;
+
 // emails
 exports.admin_email = '';
 exports.from_email = '';
@@ -56,3 +64,4 @@ exports.arrRealNameAttestors = ['I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT'];
 exports.arrSteemAttestors = ['JEDZYC2HMGDBIDQKG3XSTXUSHMCBK725'];
 exports.minSteemReputation = 60;
 
+exports.webPort = 3000;

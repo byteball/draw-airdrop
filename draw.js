@@ -368,8 +368,10 @@ setInterval(async () => {
 		let sum = new BigNumber(0);
 		let rows3 = await db.query("SELECT address FROM user_addresses WHERE excluded=0");
 		let assocAddressesToBalance = {};
+		let assocAddressesToPoints = {};
 		rows3.forEach(row => {
 			assocAddressesToBalance[row.address] = 0;
+			assocAddressesToPoints[row.address] = 0;
 		});
 		let rows1 = await db.query("SELECT address, attested, SUM(amount) AS balance\n\
 				FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
@@ -381,6 +383,7 @@ setInterval(async () => {
 			assocAddressesToBalance[row.address] = row.balance;
 			let points = (await calcPoints(row.balance, row.address, row.attested)).points;
 			if (points.gt(0)) {
+				assocAddressesToPoints[row.address] = points;
 				arrPoints.push({address: row.address, points});
 				sum = sum.add(points);
 			}
@@ -422,8 +425,8 @@ setInterval(async () => {
 			db.takeConnectionFromPool(function (conn) {
 				conn.addQuery(arrQueries, "BEGIN");
 				rows1.forEach(row => {
-					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, address, balance) VALUES (?,?,?)",
-						[draw_id, row.address, assocAddressesToBalance[row.address]]);
+					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, address, balance, points) VALUES (?,?,?,?)",
+						[draw_id, row.address, assocAddressesToBalance[row.address], assocAddressesToPoints[row.address]]);
 				});
 				conn.addQuery(arrQueries, "COMMIT");
 				async.series(arrQueries, () => {
@@ -629,6 +632,25 @@ function setStep(device_address, step) {
 const Koa = require('koa');
 const app = new Koa();
 const views = require('koa-views');
+const KoaRouter = require('koa-router');
+const router = new KoaRouter();
+
+router.get('*/snapshot/:id', async (ctx) => {
+	try {
+		let rows = await db.query("SELECT `address`, `balance`, `points` FROM prev_balances WHERE draw_id=? ORDER BY address ASC;", [ctx.params.id]);
+		ctx.body = {
+			status: 'success',
+			data: rows
+		};
+	} catch (err) {
+		ctx.body = {
+			status: 'error',
+			data: []
+		};
+		console.error(err);
+	}
+})
+app.use(router.routes());
 
 app.use(views(__dirname + '/views', {
 	map: {
@@ -641,7 +663,7 @@ app.use(async (ctx, next) => {
 		await next();
 	} catch (err) {
 		console.error(new Error(err));
-		notifications.notifyAdmin('Error in koa', err.toString());
+		//notifications.notifyAdmin('Error in koa', err.toString());
 		process.exit(0);
 	}
 });
@@ -652,6 +674,7 @@ app.use(async ctx => {
 	if (rows.length) {
 		let prevDraw = rows[0];
 		addressesInfo.hadPreviousDraw = true;
+		addressesInfo.prev_draw_id = prevDraw.draw_id;
 		addressesInfo.prev_winner_address = prevDraw.winner_address;
 		addressesInfo.prev_referrer_address = prevDraw.referrer_address || 'none';
 		addressesInfo.prev_sum = prevDraw.sum;
@@ -716,8 +739,8 @@ async function getAddressesInfoForSite() {
 		calc_time += getTimeElapsed(time);
 	}
 	let time = process.hrtime();
-	let balance_gini = gini.ordered(arrBalances.sort((a, b) => a - b));
-	let points_gini = gini.ordered(arrPoints.sort((a, b) => a - b));
+	let balance_gini = Object.keys(arrBalances).length ? gini.ordered(arrBalances.sort((a, b) => a - b)) : NaN;
+	let points_gini = Object.keys(arrPoints).length ? gini.ordered(arrPoints.sort((a, b) => a - b)) : NaN;
 	let gini_time = getTimeElapsed(time);
 	time = process.hrtime();
 //	let whale_dominance = whale_sum.div(sum).times(new BigNumber(100)).toFixed(2);
@@ -787,6 +810,6 @@ eventBus.on('new_my_transactions', async (arrUnits) => {
 	});
 });
 
-app.listen(3000);
+app.listen(conf.webPort);
 setInterval(updateNewAttestations, 3600*1000);
 process.on('unhandledRejection', up => { throw up; });

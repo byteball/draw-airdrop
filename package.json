@@ -1,18 +1,19 @@
 {
-	"name": "draw-airdrop",
-	"version": "1.0.0",
-	"description": "Draw airdrop",
-	"main": "draw.js",
-	"repository": "https://github.com/byteball/draw-airdrop.git",
-	"author": "tony",
-	"license": "MIT",
-	"dependencies": {
-		"byteballcore": "git+https://github.com/byteball/byteballcore.git",
-		"ejs": "2.6.1",
-		"gini": "^1.1.7",
-		"headless-byteball": "git+https://github.com/byteball/headless-byteball.git",
-		"koa": "2.6.2",
-		"koa-views": "6.1.4",
-		"moment": "2.22.2"
-	}
+  "name": "draw-airdrop",
+  "version": "1.0.0",
+  "description": "Draw airdrop",
+  "main": "draw.js",
+  "repository": "https://github.com/byteball/draw-airdrop.git",
+  "author": "tony",
+  "license": "MIT",
+  "dependencies": {
+    "byteballcore": "git+https://github.com/byteball/byteballcore.git",
+    "ejs": "2.6.1",
+    "gini": "^1.1.7",
+    "headless-byteball": "git+https://github.com/byteball/headless-byteball.git",
+    "koa": "2.6.2",
+    "koa-router": "7.4.0",
+    "koa-views": "6.1.4",
+    "moment": "2.22.2"
+  }
 }
