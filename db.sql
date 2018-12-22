@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
 	device_address CHAR(33) NOT NULL PRIMARY KEY,
 	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	step CHAR(15) NOT NULL DEFAULT 'start',
@@ -6,9 +6,10 @@ CREATE TABLE users (
 	referrerCode CHAR(10) NULL,
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
-CREATE INDEX byRefCode ON users(referrerCode);
-
-CREATE TABLE user_addresses (
+-- query separator
+CREATE INDEX IF NOT EXISTS byRefCode ON users(referrerCode);
+-- query separator
+CREATE TABLE IF NOT EXISTS user_addresses (
 	device_address CHAR(33) NOT NULL,
 	address CHAR(32) NOT NULL,
 	attested TINYINT NOT NULL DEFAULT 0,
@@ -18,9 +19,10 @@ CREATE TABLE user_addresses (
 	PRIMARY KEY(address),
 	FOREIGN KEY (device_address) REFERENCES correspondent_devices(device_address)
 );
-CREATE INDEX byDeviceAddresses ON user_addresses(device_address);
-
-CREATE TABLE draws (
+-- query separator
+CREATE INDEX IF NOT EXISTS byDeviceAddresses ON user_addresses(device_address);
+-- query separator
+CREATE TABLE IF NOT EXISTS draws (
 	draw_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 	bitcoin_hash CHAR(64) NOT NULL UNIQUE,
 	winner_address CHAR(32) NOT NULL,
@@ -36,11 +38,12 @@ CREATE TABLE draws (
 	FOREIGN KEY (winner_address) REFERENCES user_addresses(address),
 	FOREIGN KEY (referrer_address) REFERENCES user_addresses(address)
 );
-
-CREATE TABLE prev_balances (
+-- query separator
+CREATE TABLE IF NOT EXISTS prev_balances (
 	draw_id INT NOT NULL,
 	address CHAR(32) NOT NULL,
 	balance INT NOT NULL,
+	points CHAR(64) NULL,
 	date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY(draw_id, address),
 	FOREIGN KEY (address) REFERENCES user_addresses(address),
@@ -52,4 +55,5 @@ ALTER TABLE user_addresses ADD COLUMN excluded TINYINT NOT NULL DEFAULT 0;
 ALTER TABLE user_addresses ADD COLUMN attested_user_id CHAR(44) NULL;
 CREATE UNIQUE INDEX byAttUserId ON user_addresses(attested_user_id);
 UPDATE user_addresses SET attested_user_id=(SELECT value FROM attested_fields WHERE attestor_address='I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT' AND attested_fields.address=user_addresses.address AND field='user_id') WHERE attested=1;
+ALTER TABLE prev_balances ADD COLUMN points CHAR(64) NULL;
 */
