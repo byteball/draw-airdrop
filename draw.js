@@ -426,7 +426,7 @@ setInterval(async () => {
 				conn.addQuery(arrQueries, "BEGIN");
 				rows1.forEach(row => {
 					conn.addQuery(arrQueries, "INSERT INTO prev_balances (draw_id, address, balance, points) VALUES (?,?,?,?)",
-						[draw_id, row.address, assocAddressesToBalance[row.address], assocAddressesToPoints[row.address]]);
+						[draw_id, row.address, assocAddressesToBalance[row.address], assocAddressesToPoints[row.address].toString()]);
 				});
 				conn.addQuery(arrQueries, "COMMIT");
 				async.series(arrQueries, () => {
@@ -663,7 +663,7 @@ app.use(async (ctx, next) => {
 		await next();
 	} catch (err) {
 		console.error(new Error(err));
-		//notifications.notifyAdmin('Error in koa', err.toString());
+		notifications.notifyAdmin('Error in koa', err.toString());
 		process.exit(0);
 	}
 });
