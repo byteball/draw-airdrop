@@ -498,7 +498,8 @@ setInterval(async () => {
 	let rows = await db.query(
 		"SELECT draw_id FROM draws \n\
 		WHERE \n\
-			paid_bytes = 0 OR paid_winner_bb = 0 OR paid_balance_winner_bb = 0 \n\
+			paid_bytes = 0 OR paid_winner_bb = 0 \n\
+			OR (paid_balance_winner_bb = 0 AND balance_winner_address IS NOT NULL) \n\
 			OR (paid_referrer_bb = 0 AND referrer_address IS NOT NULL) \n\
 			OR (paid_balance_referrer_bb = 0 AND balance_referrer_address IS NOT NULL) \n\
 		"
@@ -543,7 +544,7 @@ function pay(draw_id) {
 			}
 		}
 		
-		if (draw.paid_balance_winner_bb === 0) {
+		if (draw.paid_balance_winner_bb === 0 && draw.balance_winner_address) {
 			try {
 				let result = await payBlackbytes(draw.balance_winner_address, conf.rewardForWinnerInBlackbytes);
 				await db.query("UPDATE draws SET paid_balance_winner_bb = 1, paid_balance_winner_bb_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
