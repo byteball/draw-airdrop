@@ -41,7 +41,7 @@ function getRulesText(){
 }
 
 function getGreetingText(){
-	return "Welcome to our weekly airdrop!  Every week, a prize of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB is airdropped to a single winner.  This could be you!  It is like a lottery but you don't have to buy lottery tickets - just prove your existing balance.\n\nYour chance to win depends on the balances of the addresses you link here - the larger the balances, the more points you get.  The winner of the current draw will be selected in a proven random way on " + conf.drawDate + " UTC. The more points you have on this date, the higher your chance of winning.\n\nThe rules are designed in favor of smaller participants.  Balances of more than "+conf.balanceThreshold1+" GB add less points than balances of less than "+conf.balanceThreshold1+" GB.  To get more points, you may pass a real name attestation - find \"Real name attestation bot\" in the Bot Store. The draw bot won't see your personal details, only the fact that you are attested.  Steem attestation with reputation over "+conf.minSteemReputation+" also qualifies.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB.  Instructions will be shown after you link your own address.\n\nPlease send me the address of your wallet you want to enter in the weekly draw (click '...' and 'Insert my address').";
+	return "Welcome to our weekly airdrop!  Every week, a prize of " + (2* conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB is airdropped to a single winner.  This could be you!  It is like a lottery but you don't have to buy lottery tickets - just prove your existing balance.\n\nYour chance to win depends on the balances of the addresses you link here - the larger the balances, the more points you get.  The winner of the current draw will be selected in a proven random way on " + conf.drawDate + " UTC. The more points you have on this date, the higher your chance of winning.\n\nThe rules are designed in favor of smaller participants.  Balances of more than "+conf.balanceThreshold1+" GB add less points than balances of less than "+conf.balanceThreshold1+" GB.  To get more points, you may pass a real name attestation - find \"Real name attestation bot\" in the Bot Store. The draw bot won't see your personal details, only the fact that you are attested.  Steem attestation with reputation over "+conf.minSteemReputation+" also qualifies.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB.  Instructions will be shown after you link your own address.\n\nPlease send me the address of your wallet you want to enter in the weekly draw (click '...' and 'Insert my address').";
 }
 
 function sendGreeting(device_address){
@@ -365,7 +365,8 @@ setInterval(async () => {
 		await updateNewAttestations();
 		assocBalances = {}; // reset the cache
 		let arrPoints = [];
-		let sum = new BigNumber(0);
+		let sum_points = new BigNumber(0);
+		let sum_balances = 0;
 		let rows3 = await db.query("SELECT address FROM user_addresses WHERE excluded=0");
 		let assocAddressesToBalance = {};
 		let assocAddressesToPoints = {};
@@ -377,7 +378,7 @@ setInterval(async () => {
 				FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
 				WHERE is_spent=0 AND sequence='good' AND asset IS NULL AND excluded=0 \n\
 				GROUP BY address", []);
-		
+
 		for (let i = 0; i < rows1.length; i++) {
 			let row = rows1[i];
 			assocAddressesToBalance[row.address] = row.balance;
@@ -385,19 +386,22 @@ setInterval(async () => {
 			if (points.gt(0)) {
 				assocAddressesToPoints[row.address] = points;
 				arrPoints.push({address: row.address, points});
-				sum = sum.add(points);
+				sum_points = sum_points.add(points);
 			}
+			sum_balances += row.balance;
 		}
-		if (sum.eq(new BigNumber(0)))
+		if (sum_points.eq(new BigNumber(0)))
 			return;
 		
-		let rows = await db.query("SELECT value FROM data_feeds CROSS JOIN units USING(unit) CROSS JOIN unit_authors USING(unit) \n\
+		let hash_rows = await db.query("SELECT value FROM data_feeds CROSS JOIN units USING(unit) CROSS JOIN unit_authors USING(unit) \n\
 			WHERE address = ? AND +feed_name='bitcoin_hash' AND sequence='good' AND is_stable=1 ORDER BY data_feeds.rowid DESC LIMIT 1", [conf.oracle]);
 		
-		let bitcoin_hash = rows[0].value;
+		let bitcoin_hash = hash_rows[0].value;
+		
+		// 1. winner by points
 		let hash = crypto.createHash('sha256').update(bitcoin_hash).digest('hex');
 		let number = new BigNumber(hash, 16);
-		let random = (number.div(new BigNumber(2).pow(256))).times(sum);
+		let random = (number.div(new BigNumber(2).pow(256))).times(sum_points);
 		
 		let sum2 = new BigNumber(0);
 		let winner_address;
@@ -408,16 +412,43 @@ setInterval(async () => {
 				break;
 			}
 		}
-		let refAddress = await getReferrerFromAddress(winner_address);
+		let referrer_address = await getReferrerFromAddress(winner_address);
 		let rows2 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [winner_address]);
-		let winnerDeviceAddress = rows2[0].device_address;
-		let refDeviceAddress = null;
-		if (refAddress) {
-			let rows3 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [refAddress]);
-			refDeviceAddress = rows3[0].device_address;
+		let winner_device_address = rows2[0].device_address;
+		let referrer_device_address = null;
+		if (referrer_address) {
+			let rows3 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [referrer_address]);
+			referrer_device_address = rows3[0].device_address;
 		}
-		let insertMeta = await db.query("INSERT INTO draws (bitcoin_hash, winner_address, referrer_address, sum) VALUES (?,?,?,?)",
-			[bitcoin_hash, winner_address, refAddress, sum.toNumber()]);
+		
+		// 2. winner by balances
+		let bal_hash = crypto.createHash('sha256').update(hash).digest('hex');
+		let bal_number = new BigNumber(bal_hash, 16);
+		let bal_random = (number.div(new BigNumber(2).pow(256))).times(sum_balances);
+		
+		let bal_sum2 = 0;
+		let balance_winner_address;
+		for (let i = 0; i < rows1.length; i++) {
+			bal_sum2 += rows1[i].balance;
+			if (bal_random.lte(bal_sum2)) {
+				balance_winner_address = rows1[i].address;
+				break;
+			}
+		}
+		let balance_referrer_address = await getReferrerFromAddress(balance_winner_address);
+		rows2 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [balance_winner_address]);
+		let balance_winner_device_address = rows2[0].device_address;
+		let balance_referrer_device_address = null;
+		if (balance_referrer_address) {
+			let rows3 = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [balance_referrer_address]);
+			balance_referrer_device_address = rows3[0].device_address;
+		}
+		
+		// insert the draw
+		let insertMeta = await db.query(
+			"INSERT INTO draws (bitcoin_hash, winner_address, referrer_address, balance_winner_address, balance_referrer_address, sum) \n\
+			VALUES (?, ?,?, ?,?, ?)",
+			[bitcoin_hash, winner_address, referrer_address, balance_winner_address, balance_referrer_address, sum_points.toNumber()]);
 		let draw_id = insertMeta.insertId;
 		
 		await new Promise(resolve => {
@@ -438,26 +469,40 @@ setInterval(async () => {
 		assocPrevBalances = {};
 		assocMaxPrevBalances = {};
 		pay(draw_id);
-		await sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, winner_address, refAddress);
+		
+		// send notifivations
+		let device = require('byteballcore/device');
+		let rows = await db.query("SELECT device_address FROM users");
+		rows.forEach(row => {
+			device.sendMessageToDevice(
+				row.device_address, 'text',
+				'The King of Goldfish in the draw #'+draw_id+' is ' + winner_address +
+				(winner_device_address === row.device_address ? ' (you)' : '') + ' and the winner receives a prize of '+(conf.rewardForWinnerInBytes/1e9)+' GB and '+(conf.rewardForWinnerInBlackbytes/1e9)+' GBB, congratulations to the winner!' +
+				(referrer_address !== null
+				? '\n\nThe winner was referred by ' + referrer_address + (referrer_device_address === row.device_address ? ' (you)' : '') + ' and the referrer receives a prize of '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB, congratulations to the winner\'s referrer!'
+				: '') +
+				'\n\n' +
+				'The Prince of Whales in the draw #'+draw_id+' is ' + balance_winner_address +
+				(balance_winner_device_address === row.device_address ? ' (you)' : '') + ' and the winner receives a prize of '+(conf.rewardForWinnerInBytes/1e9)+' GB and '+(conf.rewardForWinnerInBlackbytes/1e9)+' GBB, congratulations to the winner!' +
+				(balance_referrer_address !== null
+				? '\n\nThe winner was referred by ' + balance_referrer_address + (balance_referrer_device_address === row.device_address ? ' (you)' : '') + ' and the referrer receives a prize of '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB, congratulations to the winner\'s referrer!'
+				: '') +
+				'\n\nThe next draw is scheduled for '+conf.drawDate+' UTC.  You can increase your chances to win by increasing the balance you linked or referring new users.  See the [details](command:status).'
+			);
+		});
 	}
 }, 60000);
 
-async function sendNotification(draw_id, winnerDeviceAddress, refDeviceAddress, winner_address, referrer_address) {
-	let device = require('byteballcore/device');
-	let rows = await db.query("SELECT device_address FROM users");
-	rows.forEach(row => {
-		device.sendMessageToDevice(row.device_address, 'text', 'The winner of the draw #'+draw_id+' is ' + winner_address +
-			(winnerDeviceAddress === row.device_address ? ' (you)' : '') + ' and the winner receives a prize of '+(conf.rewardForWinnerInBytes/1e9)+' GB and '+(conf.rewardForWinnerInBlackbytes/1e9)+' GBB, congratulations to the winner!' +
-			(referrer_address !== null
-			? '\n\nThe winner was referred by ' + referrer_address + (refDeviceAddress === row.device_address ? ' (you)' : '') + ' and the referrer receives a prize of '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB, congratulations to the winner\'s referrer!'
-			: '') +
-			'\n\nThe next draw is scheduled for '+conf.drawDate+' UTC.  You can increase your chances to win by increasing the balance you linked or referring new users.  See the [details](command:status).'
-		);
-	});
-}
 
 setInterval(async () => {
-	let rows = await db.query("SELECT draw_id FROM draws WHERE paid_bytes = 0 OR paid_winner_bb = 0 OR (paid_referrer_bb = 0 AND referrer_address IS NOT NULL)");
+	let rows = await db.query(
+		"SELECT draw_id FROM draws \n\
+		WHERE \n\
+			paid_bytes = 0 OR paid_winner_bb = 0 OR paid_balance_winner_bb = 0 \n\
+			OR (paid_referrer_bb = 0 AND referrer_address IS NOT NULL) \n\
+			OR (paid_balance_referrer_bb = 0 AND balance_referrer_address IS NOT NULL) \n\
+		"
+	);
 	rows.forEach(row => {
 		pay(row.draw_id);
 	})
@@ -480,8 +525,8 @@ function pay(draw_id) {
 		
 		if (draw.paid_winner_bb === 0) {
 			try {
-				let result2 = await payBlackbytesToWinner(draw);
-				await db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE draw_id = ?", [result2.unit, draw_id]);
+				let result = await payBlackbytes(draw.winner_address, conf.rewardForWinnerInBlackbytes);
+				await db.query("UPDATE draws SET paid_winner_bb = 1, paid_winner_bb_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
 			} catch (e) {
 				console.error('Error payBlackbytesToWinner: ', e);
 				notifications.notifyAdmin('payBlackbytesToWinner failed', e.toString());
@@ -490,37 +535,56 @@ function pay(draw_id) {
 		
 		if (draw.paid_referrer_bb === 0 && draw.referrer_address) {
 			try {
-				let result3 = payBlackbytesToReferrer(draw);
-				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE draw_id = ?", [result3.unit, draw_id]);
+				let result = payBlackbytes(draw.referrer_address, conf.rewardForReferrerInBlackbytes);
+				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
 			}catch (e) {
 				console.error('Error payBlackbytesToReferrer: ', e);
 				notifications.notifyAdmin('payBlackbytesToReferrer failed', e.toString());
 			}
 		}
+		
+		if (draw.paid_balance_winner_bb === 0) {
+			try {
+				let result = await payBlackbytes(draw.balance_winner_address, conf.rewardForWinnerInBlackbytes);
+				await db.query("UPDATE draws SET paid_balance_winner_bb = 1, paid_balance_winner_bb_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
+			} catch (e) {
+				console.error('Error payBlackbytesToWinner balance : ', e);
+				notifications.notifyAdmin('payBlackbytesToWinner balance failed', e.toString());
+			}
+		}
+		
+		if (draw.paid_balance_referrer_bb === 0 && draw.balance_referrer_address) {
+			try {
+				let result = payBlackbytes(draw.balance_referrer_address, conf.rewardForReferrerInBlackbytes);
+				await db.query("UPDATE draws SET paid_balance_referrer_bb = 1, paid_balance_referrer_bb_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
+			}catch (e) {
+				console.error('Error payBlackbytesToReferrer balance: ', e);
+				notifications.notifyAdmin('payBlackbytesToReferrer balance failed', e.toString());
+			}
+		}
+		
 		unlock();
 	});
 }
 
 function payBytes(row) {
-	let outputs = [{address: row.winner_address, amount: conf.rewardForWinnerInBytes}];
-	if (row.referrer_address !== null) {
+	let outputs = [
+		{address: row.winner_address, amount: conf.rewardForWinnerInBytes},
+		{address: row.balance_winner_address, amount: conf.rewardForWinnerInBytes},
+	];
+	if (row.referrer_address !== null)
 		outputs.push({address: row.referrer_address, amount: conf.rewardForReferrerInBytes});
-	}
+	if (row.balance_referrer_address !== null)
+		outputs.push({address: row.balance_referrer_address, amount: conf.rewardForReferrerInBytes});
 	
 	return headlessWallet.sendPaymentUsingOutputs('base', outputs, myAddress);
 }
 
-async function payBlackbytesToWinner(row) {
-	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.winner_address]);
-	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForWinnerInBlackbytes, myAddress, row.winner_address,
-		rows[0].device_address);
+async function payBlackbytes(address, amount) {
+	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [address]);
+	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, amount, myAddress, address, rows[0].device_address);
 }
 
-async function payBlackbytesToReferrer(row) {
-	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address = ?", [row.referrer_address]);
-	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, conf.rewardForReferrerInBlackbytes, myAddress, row.referrer_address,
-		rows[0].device_address);
-}
 
 function updateNextRewardInConf() {
 	let appDataDir = desktopApp.getAppDataDir();

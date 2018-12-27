@@ -44,8 +44,8 @@ exports.drawInterval = 7; // days
 
 exports.site = 'http://draw.byteball.org';
 
-exports.rewardForWinnerInBytes = 200e9;
-exports.rewardForReferrerInBytes = exports.rewardForWinnerInBytes/2;
+exports.rewardForWinnerInBytes = 100e9;
+exports.rewardForReferrerInBytes = exports.rewardForWinnerInBytes;
 exports.rewardForWinnerInBlackbytes = exports.rewardForWinnerInBytes * 2.1111;
 exports.rewardForReferrerInBlackbytes = exports.rewardForReferrerInBytes * 2.1111;
 
