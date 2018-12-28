@@ -739,11 +739,7 @@ app.use(async ctx => {
 	if (rows.length) {
 		let prevDraw = rows[0];
 		addressesInfo.hadPreviousDraw = true;
-		addressesInfo.prev_draw_id = prevDraw.draw_id;
-		addressesInfo.prev_winner_address = prevDraw.winner_address;
-		addressesInfo.prev_referrer_address = prevDraw.referrer_address || 'none';
-		addressesInfo.prev_sum = prevDraw.sum;
-		addressesInfo.prev_bitcoin_hash = prevDraw.bitcoin_hash;
+		addressesInfo.prevDraw = prevDraw;
 		addressesInfo.prev_date = moment(prevDraw.date, 'YYYY-MM-DD hh:mm:ss').format('DD.MM.YYYY hh:mm');
 	} else {
 		addressesInfo.hadPreviousDraw = false;

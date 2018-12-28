@@ -27,11 +27,13 @@
 <% if(hadPreviousDraw) {%>
 <div>
 	<h2>Results of the previous draw on <%= prev_date %> UTC</h2>
-	Winner: <%= prev_winner_address %><br>
-	Winner's referrer: <%= prev_referrer_address %><br>
-	Total points: <%= prev_sum %><br>
-	Bitcoin hash as source of randomness: <%= prev_bitcoin_hash %><br>
-	Proof of fairness:<% /* %> <a href="snapshot/<%= prev_draw_id %>" target="_blank">snapshot data</a> and<% */ %> <a href="https://gist.github.com/tonyofbyteball/99b5e5001dc81ed296a0525d5eb38cde" target="_blank">winner selection algorithm</a><br>
+	King of Goldfish: <%= prevDraw.winner_address %><br>
+	King's referrer: <%= prevDraw.referrer_address || 'none' %><br>
+	Prince of Whales: <%= prevDraw.balance_winner_address %><br>
+	Prince's referrer: <%= prevDraw.balance_referrer_address || 'none' %><br>
+	Total points: <%= prevDraw.sum %><br>
+	Bitcoin hash as source of randomness: <%= prevDraw.bitcoin_hash %><br>
+	Proof of fairness: <a href="snapshot/<%= prevDraw.draw_id %>" target="_blank">snapshot data</a> and <a href="https://gist.github.com/tonyofbyteball/99b5e5001dc81ed296a0525d5eb38cde" target="_blank">winner selection algorithm</a><br>
 	<br>
 </div>
 <% } %>
