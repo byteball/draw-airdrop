@@ -424,7 +424,7 @@ setInterval(async () => {
 		// 2. winner by balances
 		let bal_hash = crypto.createHash('sha256').update(hash).digest('hex');
 		let bal_number = new BigNumber(bal_hash, 16);
-		let bal_random = (number.div(new BigNumber(2).pow(256))).times(sum_balances);
+		let bal_random = (bal_number.div(new BigNumber(2).pow(256))).times(sum_balances);
 		
 		let bal_sum2 = 0;
 		let balance_winner_address;
