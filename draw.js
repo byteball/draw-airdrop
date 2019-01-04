@@ -82,6 +82,8 @@ eventBus.once('headless_wallet_ready', async () => {
 		assocAttestedByAddress[row.address] = row.attested;
 	});
 	
+	setInterval(retryPayments, conf.payoutCheckInterval);
+	
 	eventBus.on('paired', async (from_address, pairing_secret) => {
 		let referring_user = await getUserByCode(pairing_secret);
 		if (referring_user) {
@@ -494,7 +496,7 @@ setInterval(async () => {
 }, 60000);
 
 
-setInterval(async () => {
+async function retryPayments(){
 	let rows = await db.query(
 		"SELECT draw_id FROM draws \n\
 		WHERE \n\
@@ -507,7 +509,7 @@ setInterval(async () => {
 	rows.forEach(row => {
 		pay(row.draw_id);
 	})
-}, conf.payoutCheckInterval);
+};
 
 function pay(draw_id) {
 	mutex.lock(["pay_lock"], async (unlock) => {
