@@ -7,13 +7,13 @@
   "author": "tony",
   "license": "MIT",
   "dependencies": {
-    "byteballcore": "git+https://github.com/byteball/byteballcore.git",
     "ejs": "2.6.1",
     "gini": "^1.1.7",
-    "headless-byteball": "git+https://github.com/byteball/headless-byteball.git",
+    "headless-obyte": "git+https://github.com/byteball/headless-obyte.git",
     "koa": "2.6.2",
     "koa-router": "7.4.0",
     "koa-views": "6.1.4",
-    "moment": "2.22.2"
+    "moment": "2.22.2",
+    "ocore": "git+https://github.com/byteball/ocore.git"
   }
 }

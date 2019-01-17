@@ -1,18 +1,18 @@
 /*jslint node: true */
 'use strict';
-const constants = require('byteballcore/constants.js');
-const conf = require('byteballcore/conf');
-const db = require('byteballcore/db');
-const eventBus = require('byteballcore/event_bus');
-const validationUtils = require('byteballcore/validation_utils');
-const headlessWallet = require('headless-byteball');
+const constants = require('ocore/constants.js');
+const conf = require('ocore/conf');
+const db = require('ocore/db');
+const eventBus = require('ocore/event_bus');
+const validationUtils = require('ocore/validation_utils');
+const headlessWallet = require('headless-obyte');
 const crypto = require('crypto');
 const BigNumber = require('bignumber.js');
 const moment = require('moment');
-const desktopApp = require('byteballcore/desktop_app.js');
+const desktopApp = require('ocore/desktop_app.js');
 const async = require('async');
 const fs = require('fs');
-const mutex = require('byteballcore/mutex');
+const mutex = require('ocore/mutex');
 const notifications = require('./notifications');
 const gini = require("gini");
 
@@ -45,7 +45,7 @@ function getGreetingText(){
 }
 
 function sendGreeting(device_address){
-	const device = require('byteballcore/device.js');
+	const device = require('ocore/device.js');
 	device.sendMessageToDevice(device_address, 'text', getGreetingText());
 	assocReceivedGreeting[device_address] = true;
 }
@@ -53,7 +53,7 @@ function sendGreeting(device_address){
 let myAddress;
 
 eventBus.once('headless_wallet_ready', async () => {
-	const network = require('byteballcore/network.js');
+	const network = require('ocore/network.js');
 	headlessWallet.setupChatEventHandlers();
 	
 	db.query("SELECT address FROM my_addresses", [], function (rows) {
@@ -94,7 +94,7 @@ eventBus.once('headless_wallet_ready', async () => {
 	});
 	
 	eventBus.on('text', async (from_address, text) => {
-		const device = require('byteballcore/device.js');
+		const device = require('ocore/device.js');
 		text = text.trim();
 		let userInfo = await getUserInfo(from_address);
 		let addressesRows = await getAddresses(from_address);
@@ -109,7 +109,7 @@ eventBus.once('headless_wallet_ready', async () => {
 			}
 		} else if (arrSignedMessageMatches) {
 			let signedMessageBase64 = arrSignedMessageMatches[1];
-			let validation = require('byteballcore/validation.js');
+			let validation = require('ocore/validation.js');
 			let signedMessageJson = Buffer(signedMessageBase64, 'base64').toString('utf8');
 			let objSignedMessage;
 			try {
@@ -175,7 +175,7 @@ eventBus.once('headless_wallet_ready', async () => {
 });
 
 async function showStatus(device_address, userInfo) {
-	const device = require('byteballcore/device');
+	const device = require('ocore/device');
 	let addressesRows = await getAddresses(device_address);
 	let sum = new BigNumber(0);
 	let text = '';
@@ -229,7 +229,7 @@ async function saveAddress(device_address, user_address) {
 	if (!assocAddressesByDevice[device_address])
 		assocAddressesByDevice[device_address] = [];
 	assocAddressesByDevice[device_address].push(user_address);
-	const network = require('byteballcore/network');
+	const network = require('ocore/network');
 	network.addWatchedAddress(user_address);
 	
 	let rows = await db.query("SELECT device_address FROM users WHERE device_address = ?", [device_address]);
@@ -473,7 +473,7 @@ setInterval(async () => {
 		pay(draw_id);
 		
 		// send notifivations
-		let device = require('byteballcore/device');
+		let device = require('ocore/device');
 		let rows = await db.query("SELECT device_address FROM users");
 		rows.forEach(row => {
 			device.sendMessageToDevice(
