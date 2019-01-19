@@ -717,6 +717,7 @@ router.get('*/snapshot/:id', async (ctx) => {
 	} catch (err) {
 		ctx.body = {
 			status: 'error',
+			draw: {},
 			data: []
 		};
 		console.error(err);
