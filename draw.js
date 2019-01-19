@@ -702,12 +702,16 @@ const views = require('koa-views');
 const KoaRouter = require('koa-router');
 const router = new KoaRouter();
 
-router.get('*/snapshot/:id', async (ctx) => {
+router.get('*/snapshot/:id?', async (ctx) => {
 	try {
-		let draws = await db.query("SELECT * FROM draws WHERE draw_id=? LIMIT 1;", [ctx.params.id]);
-		if (!draws.length) throw Error("no draw");
+		let draws = [];
+		if (ctx.params.id)
+			draws = await db.query("SELECT * FROM draws WHERE draw_id=?;", [ctx.params.id]);
+		else
+			draws = await db.query("SELECT * FROM draws WHERE draw_id=(SELECT draw_id FROM draws ORDER BY draw_id DESC LIMIT 1);");
 
-		let rows = await db.query("SELECT `address`, `balance`, `points` FROM prev_balances WHERE draw_id=? ORDER BY address ASC;", [ctx.params.id]);
+		if (!draws.length) throw Error("no draw");
+		let rows = await db.query("SELECT `address`, `balance`, `points` FROM prev_balances WHERE draw_id=? ORDER BY address ASC;", [draws[0].draw_id]);
 
 		ctx.body = {
 			status: 'success',
