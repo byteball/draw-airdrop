@@ -704,9 +704,14 @@ const router = new KoaRouter();
 
 router.get('*/snapshot/:id', async (ctx) => {
 	try {
+		let draws = await db.query("SELECT * FROM draws WHERE draw_id=? LIMIT 1;", [ctx.params.id]);
+		if (!draws.length) throw Error("no draw");
+
 		let rows = await db.query("SELECT `address`, `balance`, `points` FROM prev_balances WHERE draw_id=? ORDER BY address ASC;", [ctx.params.id]);
+
 		ctx.body = {
 			status: 'success',
+			draw: draws[0],
 			data: rows
 		};
 	} catch (err) {
