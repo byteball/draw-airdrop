@@ -60,7 +60,7 @@ exports.multiplierForBalanceIncrease = 0.1;
 exports.multiplierForBalanceDecrease = 0.2;
 exports.maxBalanceIncreaseFactor = 2;
 
-exports.arrRealNameAttestors = ['I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT'];
+exports.arrRealNameAttestors = ['I2ADHGP4HL6J37NQAD73J7E5SKFIXJOT', 'OHVQ2R5B6TUR5U7WJNYLP3FIOSR7VCED'];
 exports.arrSteemAttestors = ['JEDZYC2HMGDBIDQKG3XSTXUSHMCBK725'];
 exports.minSteemReputation = 60;
 
