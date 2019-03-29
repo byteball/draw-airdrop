@@ -739,8 +739,8 @@ app.use(async (ctx, next) => {
 	try {
 		await next();
 	} catch (err) {
-		console.error(new Error(err));
-		notifications.notifyAdmin('Error in koa', err.toString());
+		console.error(new Error(err), err);
+		notifications.notifyAdmin('Error in koa', err.toString()+'\n'+err.stack);
 		process.exit(0);
 	}
 });
