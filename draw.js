@@ -193,7 +193,7 @@ async function showStatus(device_address, userInfo) {
 			(objPoints.pointsForChange.toNumber() ?
 				'\t' + objPoints.pointsForChange.toString() + ' points for balance change from the previous draw\n' : '') +
 			'';
-		sum = sum.add(objPoints.points);
+		sum = sum.plus(objPoints.points);
 	}
 	let totalPointsOfReferrals = await getPointsOfReferrals(userInfo.code);
 	device.sendMessageToDevice(device_address, 'text', 'Your points: ' + sum.toString() + '\nTotal points of your referrals: ' + totalPointsOfReferrals +
@@ -342,7 +342,7 @@ async function getPointsOfReferrals(code) {
 			let balance = await getAddressBalance(address);
 			let points = (await calcPoints(balance, address, assocAttestedByAddress[address])).points;
 			if (points.gt(0))
-				sum = sum.add(points);
+				sum = sum.plus(points);
 		}
 	}
 /*	let rows = await db.query(
@@ -355,7 +355,7 @@ async function getPointsOfReferrals(code) {
 		let row = rows[i];
 		let points = (await calcPoints(row.balance, row.address, row.attested)).points;
 		if (points.gt(0)) {
-			sum = sum.add(points);
+			sum = sum.plus(points);
 		}
 	}*/
 	return sum.toString();
@@ -388,7 +388,7 @@ setInterval(async () => {
 			if (points.gt(0)) {
 				assocAddressesToPoints[row.address] = points;
 				arrPoints.push({address: row.address, points});
-				sum_points = sum_points.add(points);
+				sum_points = sum_points.plus(points);
 			}
 			sum_balances += row.balance;
 		}
@@ -408,7 +408,7 @@ setInterval(async () => {
 		let sum2 = new BigNumber(0);
 		let winner_address;
 		for (let i = 0; i < arrPoints.length; i++) {
-			sum2 = sum2.add(arrPoints[i].points);
+			sum2 = sum2.plus(arrPoints[i].points);
 			if (random.lte(sum2)) {
 				winner_address = arrPoints[i].address;
 				break;
@@ -633,7 +633,7 @@ async function calcPoints(balance, address, attested) {
 		} else {
 			pointsForBalanceBelowThreshold1 = bnBalance;
 		}
-		points = pointsForBalanceBelowThreshold1.add(pointsForBalanceAboveThreshold1).add(pointsForBalanceAboveThreshold2);
+		points = pointsForBalanceBelowThreshold1.plus(pointsForBalanceAboveThreshold1).plus(pointsForBalanceAboveThreshold2);
 	} else {
 		points = bnBalance.times(conf.multiplierForNonAttested);
 	}
@@ -646,12 +646,12 @@ async function calcPoints(balance, address, attested) {
 		else
 			deltaInGB = new BigNumber(max_prev_balance).times(conf.maxBalanceIncreaseFactor - 1).div(conf.unitValue);
 		pointsForChange = deltaInGB.times(conf.multiplierForBalanceIncrease);
-		points = points.add(pointsForChange);
+		points = points.plus(pointsForChange);
 	}
 	if (prev_balance && balance < prev_balance) {
 		let deltaInGB = bnBalance.minus(new BigNumber(prev_balance).div(conf.unitValue));
 		pointsForChange = deltaInGB.times(conf.multiplierForBalanceDecrease);
-		points = points.add(pointsForChange);
+		points = points.plus(pointsForChange);
 	}
 	return {points: points, pointsForBalanceAboveThreshold2, pointsForBalanceAboveThreshold1, pointsForBalanceBelowThreshold1, pointsForChange};
 }
@@ -801,14 +801,14 @@ async function getAddressesInfoForSite() {
 		let gb_balance = balance / 1e9;
 		objAddresses[row.address].balance = gb_balance;
 		if (nPoints > 0)
-			sum = sum.add(points);
+			sum = sum.plus(points);
 		total_balance += balance;
 		if (gb_balance > dust_threshold)
 			arrBalances.push(gb_balance);
 		if (nPoints > dust_threshold)
 			arrPoints.push(nPoints);
 		if (gb_balance > whale_threshold && nPoints > 0)
-			whale_sum = whale_sum.add(points);
+			whale_sum = whale_sum.plus(points);
 		calc_time += getTimeElapsed(time);
 	}
 	let time = process.hrtime();
