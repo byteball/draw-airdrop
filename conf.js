@@ -11,7 +11,7 @@ exports.storage = 'sqlite';
 //exports.socksHost = '127.0.0.1';
 //exports.socksPort = 9050;
 
-exports.hub = 'byteball.org/bb';
+exports.hub = process.env.testnet ? 'obyte.org/bb-test' : 'obyte.org/bb';
 exports.deviceName = 'Draw Airdrop';
 exports.permanent_pairing_secret = '*'; // * allows to pair with any code, the code is passed as 2nd param to the pairing event handler
 exports.control_addresses = [''];
@@ -22,7 +22,7 @@ exports.bSingleAddress = true;
 exports.bStaticChangeAddress = true;
 exports.KEYS_FILENAME = 'keys.json';
 
-// smtp https://github.com/byteball/byteballcore/blob/master/mail.js
+// smtp https://github.com/byteball/ocore/blob/master/mail.js
 exports.smtpTransport = 'local'; // use 'local' for Unix Sendmail
 exports.smtpRelay = '';
 exports.smtpUser = '';
@@ -42,7 +42,7 @@ exports.oracle = 'FOPUBEUPBC6YLIQDLKL6EW775BMV7YOH';
 exports.drawDate = '14.12.2018 12:00';
 exports.drawInterval = 7; // days
 
-exports.site = 'http://draw.byteball.org';
+exports.site = 'http://draw.obyte.org';
 
 exports.rewardForWinnerInBytes = 100e9;
 exports.rewardForReferrerInBytes = exports.rewardForWinnerInBytes;
