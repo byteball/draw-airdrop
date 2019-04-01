@@ -538,7 +538,7 @@ function pay(draw_id) {
 		
 		if (draw.paid_referrer_bb === 0 && draw.referrer_address) {
 			try {
-				let result = payBlackbytes(draw.referrer_address, conf.rewardForReferrerInBlackbytes);
+				let result = await payBlackbytes(draw.referrer_address, conf.rewardForReferrerInBlackbytes);
 				await db.query("UPDATE draws SET paid_referrer_bb = 1, paid_referrer_bb_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
 			}catch (e) {
 				console.error('Error payBlackbytesToReferrer: ', e);
@@ -558,7 +558,7 @@ function pay(draw_id) {
 		
 		if (draw.paid_balance_referrer_bb === 0 && draw.balance_referrer_address) {
 			try {
-				let result = payBlackbytes(draw.balance_referrer_address, conf.rewardForReferrerInBlackbytes);
+				let result = await payBlackbytes(draw.balance_referrer_address, conf.rewardForReferrerInBlackbytes);
 				await db.query("UPDATE draws SET paid_balance_referrer_bb = 1, paid_balance_referrer_bb_unit = ? WHERE draw_id = ?", [result.unit, draw_id]);
 			}catch (e) {
 				console.error('Error payBlackbytesToReferrer balance: ', e);
