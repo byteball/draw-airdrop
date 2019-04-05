@@ -88,7 +88,9 @@ eventBus.once('headless_wallet_ready', async () => {
 		let referring_user = await getUserByCode(pairing_secret);
 		if (referring_user) {
 			await createUser(from_address);
-			await setRefCode(from_address, pairing_secret);
+			if (referring_user.code !== pairing_secret) {
+				await setRefCode(from_address, pairing_secret);
+			}
 		}
 		sendGreeting(from_address);
 	});
