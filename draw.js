@@ -147,7 +147,6 @@ eventBus.once('headless_wallet_ready', async () => {
 			return device.sendMessageToDevice(from_address, 'text', 'Please send me your address.');
 		} else if (userInfo && text === 'skip ref') {
 			await setRefCode(from_address, null);
-			await setStep(from_address, 'done');
 			await showStatus(from_address, userInfo);
 		} else if (userInfo && text === 'ref') {
 			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1", [from_address]);
@@ -298,7 +297,7 @@ function setRefCode(device_address, code) {
 		assocReferralsByCode[code].push(device_address);
 	}
 	return new Promise(resolve => {
-		db.query("UPDATE users SET referrerCode = ? WHERE device_address = ?", [code, device_address], () => {
+		db.query("UPDATE users SET referrerCode = ?, step = ? WHERE device_address = ?", [code, 'done', device_address], () => {
 			return resolve();
 		})
 	});
