@@ -148,6 +148,9 @@ eventBus.once('headless_wallet_ready', async () => {
 		} else if (userInfo && text === 'skip ref') {
 			await setRefCode(from_address, null);
 			await showStatus(from_address, userInfo);
+		} else if (userInfo && text === 'change ref') {
+			await setStep(from_address, 'ref');
+			device.sendMessageToDevice(from_address, 'text', "Who invited you? Please send me his/her referrer code. Or [skip](command:skip ref) this step. If you win, the referrer will also win an additional prize.");
 		} else if (userInfo && text === 'ref') {
 			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1", [from_address]);
 			if (rows.length) {
