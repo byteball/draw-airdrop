@@ -98,6 +98,9 @@ eventBus.once('headless_wallet_ready', async () => {
 	eventBus.on('text', async (from_address, text) => {
 		const device = require('ocore/device.js');
 		text = text.trim();
+		// ignore multi-line bot responses
+		if (text.split("\n").length > 1)
+			return false;
 		let userInfo = await getUserInfo(from_address);
 		let addressesRows = await getAddresses(from_address);
 		let arrSignedMessageMatches = text.match(/\(signed-message:(.+?)\)/);
