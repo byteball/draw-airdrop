@@ -136,8 +136,7 @@ eventBus.once('headless_wallet_ready', async () => {
 				}
 				let attested = await saveAddress(from_address, address);
 				device.sendMessageToDevice(from_address, 'text', "Thanks, added your address.  "+(attested ? "The address is attested and will earn you the maximum number of points." : "The address is not attested and will earn you "+(conf.multiplierForNonAttested)+" points per GB of balance.  Have your real name attested to maximize your points and chances to win.  Steem attestation with reputation over "+conf.minSteemReputation+" also qualifies."));
-				if (userInfo && userInfo.referrerCode) {
-					await setStep(from_address, 'done');
+				if (userInfo && userInfo.step === 'done') {
 					await showStatus(from_address, userInfo);
 				} else {
 					await setStep(from_address, 'ref');
