@@ -18,7 +18,7 @@ function sendAnnouncement(){
 	db.query(
 		"SELECT correspondent_devices.device_address \n\
 		FROM correspondent_devices \n\
-		LEFT JOIN optouts USING(device_address) \m\
+		LEFT JOIN optouts USING(device_address) \n\
 	--	LEFT JOIN recipients ON states.device_address=recipients.device_address \n\
 		WHERE optouts.device_address IS NULL \n\
 			-- AND recipients.device_address IS NULL \n\
