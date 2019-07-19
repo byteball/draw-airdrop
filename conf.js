@@ -40,7 +40,7 @@ exports.unitValue = 1000000000;
 exports.oracle = 'FOPUBEUPBC6YLIQDLKL6EW775BMV7YOH';
 
 exports.drawDate = '14.12.2018 12:00';
-exports.drawInterval = 7; // days
+exports.drawInterval = 14; // days
 
 exports.site = 'http://draw.obyte.org';
 
