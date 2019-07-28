@@ -315,7 +315,7 @@ async function getAddressBalance(address) {
 	let rows = await db.query(
 		"SELECT SUM(amount) AS balance \n\
 		FROM outputs JOIN units USING(unit) \n\
-		WHERE is_spent=0 AND address=? AND sequence='good' AND asset IS NULL", [address]);
+		WHERE is_spent=0 AND address=? AND is_stable=1 AND sequence='good' AND asset IS NULL", [address]);
 	assocBalances[address] = rows.length ? (rows[0].balance || 0) : 0;
 	return assocBalances[address];
 }
@@ -324,7 +324,7 @@ async function getUserBalance(device_address) {
 	let rows = await db.query(
 		"SELECT SUM(amount) AS balance \n\
 		FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit) \n\
-		WHERE device_address=? AND is_spent=0 AND sequence='good' AND asset IS NULL", [device_address]);
+		WHERE device_address=? AND is_spent=0 AND is_stable=1 AND sequence='good' AND asset IS NULL", [device_address]);
 	if (rows.length) {
 		return (rows[0].balance || 0);
 	} else {
@@ -355,7 +355,7 @@ async function getPointsOfReferrals(code) {
 /*	let rows = await db.query(
 		"SELECT address, attested, SUM(amount) AS balance \n\
 		FROM users CROSS JOIN user_addresses USING(device_address) CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
-		WHERE referrerCode = ? AND is_spent=0 AND sequence='good' AND asset IS NULL \n\
+		WHERE referrerCode = ? AND is_spent=0 AND is_stable=1 AND sequence='good' AND asset IS NULL \n\
 		GROUP BY address", [code]);
 	
 	for (let i = 0; i < rows.length; i++) {
@@ -385,7 +385,7 @@ setInterval(async () => {
 		});
 		let rows1 = await db.query("SELECT address, attested, SUM(amount) AS balance\n\
 				FROM user_addresses CROSS JOIN outputs USING(address) CROSS JOIN units USING(unit)\n\
-				WHERE is_spent=0 AND sequence='good' AND asset IS NULL AND excluded=0 \n\
+				WHERE is_spent=0 AND is_stable=1 AND sequence='good' AND asset IS NULL AND excluded=0 \n\
 				GROUP BY address", []);
 
 		for (let i = 0; i < rows1.length; i++) {
@@ -402,8 +402,10 @@ setInterval(async () => {
 		if (sum_points.eq(new BigNumber(0)))
 			return;
 		
-		let hash_rows = await db.query("SELECT value FROM data_feeds CROSS JOIN units USING(unit) CROSS JOIN unit_authors USING(unit) \n\
-			WHERE address = ? AND +feed_name='bitcoin_hash' AND sequence='good' AND is_stable=1 ORDER BY data_feeds.rowid DESC LIMIT 1", [conf.oracle]);
+		let hash_rows = await db.query("SELECT value FROM data_feeds \n\
+			CROSS JOIN units USING(unit) CROSS JOIN unit_authors USING(unit) \n\
+			WHERE address = ? AND +feed_name='bitcoin_hash' AND sequence='good' \n\
+			ORDER BY data_feeds.rowid DESC LIMIT 1", [conf.oracle]);
 		
 		let bitcoin_hash = hash_rows[0].value;
 		
