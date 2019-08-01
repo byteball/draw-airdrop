@@ -880,7 +880,7 @@ function makeCode() {
 	return text;
 }
 
-eventBus.on('new_my_transactions', async (arrUnits) => {
+eventBus.on('my_transactions_became_stable', async (arrUnits) => {
 	let rows = await db.query(
 		"SELECT address FROM unit_authors CROSS JOIN user_addresses USING(address) WHERE unit IN(?) \n\
 		UNION \n\
