@@ -113,6 +113,8 @@ eventBus.once('headless_wallet_ready', async () => {
 				return device.sendMessageToDevice(from_address, 'text', pleaseSign(text));
 			}
 		} else if (arrSignedMessageMatches) {
+			if (moment() > moment(conf.drawDate, 'DD.MM.YYYY hh:mm').subtract(30, 'minutes'))
+				return device.sendMessageToDevice(from_address, 'text', 'Adding new address is disabled until next round. Sign the message again shortly after that.');
 			let signedMessageBase64 = arrSignedMessageMatches[1];
 			let validation = require('ocore/validation.js');
 			let signedMessageJson = Buffer(signedMessageBase64, 'base64').toString('utf8');
