@@ -177,6 +177,29 @@ eventBus.once('headless_wallet_ready', async () => {
 			} else {
 				device.sendMessageToDevice(from_address, 'text', 'Please send a valid referrer code or [skip](command:skip ref)');
 			}
+		} else if (validationUtils.isValidBase64(text, 44)) {
+			let rows = await db.query(
+				"SELECT * FROM draws \n\
+				WHERE \n\
+					paid_winner_bb_unit = ? \n\
+					OR paid_referrer_bb_unit = ? \n\
+					OR paid_balance_winner_bb_unit = ? \n\
+					OR paid_balance_referrer_bb_unit = ? \n\
+				", [text, text, text, text]
+			);
+			if (rows.length < 1) {
+				return device.sendMessageToDevice(from_address, 'text', 'Unit not found.');
+			}
+			let to_address = '';
+			to_address = rows[0].paid_winner_bb_unit == text ? rows[0].winner_address : to_address;
+			to_address = rows[0].paid_referrer_bb_unit == text ? rows[0].referrer_address : to_address;
+			to_address = rows[0].paid_balance_winner_bb_unit == text ? rows[0].balance_winner_address : to_address;
+			to_address = rows[0].paid_balance_referrer_bb_unit == text ? rows[0].balance_referrer_address : to_address;
+			if (to_address) {
+				resendBlackbytePayloads(text, to_address, function() {
+					device.sendMessageToDevice(from_address, 'text', "Blackbytes resent.");
+				});
+			}
 		} else if (userInfo) {
 			await showStatus(from_address, userInfo);
 		}
@@ -599,6 +622,14 @@ async function payBlackbytes(address, amount) {
 	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, amount, myAddress, address, rows[0].device_address);
 }
 
+function resendBlackbytePayloads(unit, to_address, onDone) {
+	let indivisible_asset = require('ocore/indivisible_asset');
+	let walletDefinedByAddresses = require('ocore/wallet_defined_by_addresses');
+
+	indivisible_asset.restorePrivateChains(constants.BLACKBYTES_ASSET, unit, to_address, function (arrRecipientChains, arrCosignerChains) {
+		walletDefinedByAddresses.forwardPrivateChainsToOtherMembersOfAddresses(arrCosignerChains, [myAddress], null, onDone);
+	});
+}
 
 function updateNextRewardInConf() {
 	let appDataDir = desktopApp.getAppDataDir();
