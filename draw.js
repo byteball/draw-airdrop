@@ -41,6 +41,7 @@ function getRulesText(){
 }
 
 function getGreetingText(){
+	return "The next draw will be decided upon after we hear your feedback. What do you feel about its results so far? Should we continue or stop it? Please get to our Discord, Telegram, Reddit, and Bitcointalk, and post what you think about the draw.";
 	return "Welcome to our weekly airdrop!  Every week, two prizes of " + (conf.rewardForWinnerInBytes / 1e9) + " GB and " + (conf.rewardForWinnerInBlackbytes / 1e9) + " GBB are airdropped to two winners.  This could be you!  It is like a lottery but you don't have to buy lottery tickets - just prove your existing balance.\n\nYour chance to win depends on the balances of the addresses you link here - the larger the balances, the more points you get.  The winner of the current draw will be selected in a proven random way on " + conf.drawDate + " UTC. The more points you have on this date, the higher your chance of winning.\n\nThe rules are designed in favor of smaller participants.  Balances of more than "+conf.balanceThreshold1+" GB add less points than balances of less than "+conf.balanceThreshold1+" GB.  To get more points, you may pass a real name attestation - find \"Real name attestation bot\" in the Bot Store. The draw bot won't see your personal details, only the fact that you are attested.  Steem attestation with reputation over "+conf.minSteemReputation+" also qualifies.  Full rules:\n" + getRulesText() + "\n\nIf you refer new users to this draw and one of them wins, you also win " + (conf.rewardForReferrerInBytes / 1e9) + " GB and " + (conf.rewardForReferrerInBlackbytes / 1e9) + " GBB.  Instructions will be shown after you link your own address.\n\nPlease send me the address of your wallet you want to enter in the weekly draw (click '...' and 'Insert my address').";
 }
 
@@ -523,7 +524,8 @@ setInterval(async () => {
 				(balance_referrer_address !== null
 				? '\n\nThe winner was referred by ' + balance_referrer_address + (balance_referrer_device_address === row.device_address ? ' (you)' : '') + ' and the referrer receives a prize of '+(conf.rewardForReferrerInBytes/1e9)+' GB and '+(conf.rewardForReferrerInBlackbytes/1e9)+' GBB, congratulations to the winner\'s referrer!'
 				: '') +
-				'\n\nThe next draw is scheduled for '+conf.drawDate+' UTC.  You can increase your chances to win by increasing the balance you linked or referring new users.  See the [details](command:status).'
+			//	'\n\nThe next draw is scheduled for '+conf.drawDate+' UTC.  You can increase your chances to win by increasing the balance you linked or referring new users.  See the [details](command:status).'
+				'\n\nThe next draw will be decided upon after we hear your feedback. What do you feel about its results so far? Should we continue or stop it? Please get to our Discord, Telegram, Reddit, and Bitcointalk, and post what you think about the draw.'
 			);
 		});
 	}
