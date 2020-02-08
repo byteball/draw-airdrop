@@ -197,7 +197,7 @@ eventBus.once('headless_wallet_ready', async () => {
 			to_address = rows[0].paid_balance_winner_bb_unit == text ? rows[0].balance_winner_address : to_address;
 			to_address = rows[0].paid_balance_referrer_bb_unit == text ? rows[0].balance_referrer_address : to_address;
 			if (to_address) {
-				resendBlackbytePayloads(text, to_address, function() {
+				await resendBlackbytePayloads(text, to_address, function() {
 					device.sendMessageToDevice(from_address, 'text', "Blackbytes resent.");
 				});
 			}
@@ -624,12 +624,17 @@ async function payBlackbytes(address, amount) {
 	return headlessWallet.sendAssetFromAddress(constants.BLACKBYTES_ASSET, amount, myAddress, address, rows[0].device_address);
 }
 
-function resendBlackbytePayloads(unit, to_address, onDone) {
+async function resendBlackbytePayloads(unit, to_address, onDone) {
 	let indivisible_asset = require('ocore/indivisible_asset');
-	let walletDefinedByAddresses = require('ocore/wallet_defined_by_addresses');
+	let walletGeneral = require('ocore/wallet_general');
+
+	let rows = await db.query("SELECT device_address FROM user_addresses WHERE address=?", [to_address]);
+	if (rows.length === 0)
+		throw Error("no device address of address " + to_address);
+	let device_address = rows[0].device_address;
 
 	indivisible_asset.restorePrivateChains(constants.BLACKBYTES_ASSET, unit, to_address, function (arrRecipientChains, arrCosignerChains) {
-		walletDefinedByAddresses.forwardPrivateChainsToOtherMembersOfAddresses(arrCosignerChains, [myAddress], null, onDone);
+		walletGeneral.sendPrivatePayments(device_address, arrRecipientChains, false, db, onDone);
 	});
 }
 
