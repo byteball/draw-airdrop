@@ -16,6 +16,8 @@ const mutex = require('ocore/mutex');
 const notifications = require('./notifications');
 const gini = require("gini");
 
+const pairingProtocol = process.env.testnet ? 'obyte-tn:' : 'obyte:';
+
 const dust_threshold = 0.1; // for Gini coefficients
 const whale_threshold = 500;
 
@@ -161,7 +163,7 @@ eventBus.once('headless_wallet_ready', async () => {
 			let rows = await db.query("SELECT * FROM user_addresses WHERE device_address = ? AND attested = 1", [from_address]);
 			if (rows.length) {
 				const invite_code = device.getMyDevicePubKey() + '@' + conf.hub + '#' + userInfo.code;
-				const qr_url = conf.site + "/qr/?code=" + encodeURIComponent("byteball:"+ invite_code);
+				const qr_url = conf.site + "/qr/?code=" + encodeURIComponent(pairingProtocol + invite_code);
 				return device.sendMessageToDevice(from_address, 'text', 'If you refer new users and one of them wins, you also win ' + (conf.rewardForReferrerInBytes / 1e9) + ' GB and ' + (conf.rewardForReferrerInBlackbytes / 1e9) + ' GBB. There are three ways to invite new users and ensure that the referrals are tracked to you:\n➡ have new users scan this QR code with wallet app ' + qr_url + ' which opens this bot in the user\'s wallet;\n➡ have new users copy-paste this to \"Chat > Add a new device > Accept invitation from the other device ' + invite_code + ' which opens this bot in the user\'s wallet;\n ➡ have new users start this bot from the Bot Store and enter your referrer code ' + userInfo.code + ' when the bot asks them about the referrer.');
 			} else {
 				return device.sendMessageToDevice(from_address, 'text', 'To participate in the referral program you need to link at least one real-name attested address.  If you are not attested yet, find "Real name attestation bot" in the Bot Store and go through the attestation.  If you are already attested, switch to your attested wallet and [link its address](command:add new address).  The Draw Airdrop Bot will not know any of your personal details, it needs just the fact that you are attested.  Steem attestation with reputation over '+conf.minSteemReputation+' also qualifies.');
@@ -748,8 +750,11 @@ function setStep(device_address, step) {
 const Koa = require('koa');
 const app = new Koa();
 const views = require('koa-views');
+const serve = require('koa-static');
 const KoaRouter = require('koa-router');
 const router = new KoaRouter();
+
+app.use(serve(__dirname + '/public'));
 
 router.get('*/snapshot/:id?', async (ctx) => {
 	try {
