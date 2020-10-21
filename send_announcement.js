@@ -8,7 +8,12 @@ var headlessWallet = require('headless-obyte');
 //const announcement = "Byteball 2.0 released, it allows to send Bytes to email address, even if the recipient is not in Byteball yet.\n\nLearn more: https://medium.com/byteball/sending-cryptocurrency-to-email-5c9bce22b8a9";
 //const announcement = "We are extremely pleased to announce our first decentralized witness candidate. This is a major milestone for Byteball. Read the full article here: https://medium.com/byteball/first-decentralized-witness-candidate-rogier-eijkelhof-9e5619166334";
 //const announcement = "Obyte needs your help to get decentralized. The second independent witness candidate Fabien Marino was put forward 2 months ago https://medium.com/obyte/second-independent-witness-candidate-fabien-marino-d4e8dccadee but we have not had enough community feedback so far. The Obyte Foundation will not decide everything for you, please take part in Obyte governance and either support Fabien by editing the witness list in your wallet as indicated in the article or air your concerns on Obyte Discord, Reddit, or Telegram. Don’t stay indifferent, the faster we decentralize, the more likely we will be able to attract well known real world brands to the project! Suggestions of other witness candidates are also welcome.";
-const announcement = "Bosch is the next witness candidate https://medium.com/obyte/bosch-connectory-is-the-next-candidate-to-become-a-witness-on-the-obyte-public-network-b99572870644\n\nPlease vote for or against them before December 27.";
+//const announcement = "Bosch is the next witness candidate https://medium.com/obyte/bosch-connectory-is-the-next-candidate-to-become-a-witness-on-the-obyte-public-network-b99572870644\n\nPlease vote for or against them before December 27.";
+const announcement = `We'll distribute 100 GBYTE per week to active Obyte users who provide liquidity on Oswap.io pools - it's like yield farming, but in native GBYTE tokens.
+
+Oswap.io is an automated market maker like Uniswap, but for assets issued on Obyte instead. If you haven't noticed yet, we recently launched Bonded Stablecoins https://ostable.org and there are many new assets available for trading.
+
+https://medium.com/obyte/liquidity-mining-8cce2bf3722e`;
 const optout_text = "\n\nIf you don't want to receive news here, [click here to opt out](command:optout).";
 const message = announcement + optout_text;
 
